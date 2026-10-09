@@ -229,6 +229,74 @@
             color: #b91c1c;
         }
 
+        .status.overdue {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .status.accepted {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .status.needs_revision {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status.submitted {
+            background: #e0f2fe;
+            color: #075985;
+        }
+
+        .group-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 4px;
+        }
+
+        .open-link {
+            color: var(--blue);
+            font-size: 13px;
+            font-weight: 650;
+            text-decoration: none;
+        }
+
+        .chips {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 6px;
+        }
+
+        select.inline {
+            padding: 6px 8px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: #fff;
+            color: var(--text);
+            font-size: 12px;
+        }
+
+        button.ghost {
+            background: transparent;
+            color: var(--muted);
+            border: 1px solid var(--border);
+            padding: 6px 10px;
+            font-size: 12px;
+        }
+
+        button:focus-visible,
+        select:focus-visible,
+        a:focus-visible,
+        input:focus-visible {
+            outline: 3px solid #93c5fd;
+            outline-offset: 2px;
+        }
+
         @media (max-width: 760px) {
             main {
                 padding: 22px 15px 35px;
@@ -276,21 +344,21 @@
 
         <section class="grid" aria-label="Progress summary">
             <article class="stat">
-                <div class="stat-label">Total personal tasks</div>
+                <div class="stat-label">Total tasks</div>
                 <div class="stat-value" id="totalTasks">—</div>
-                <div class="stat-note">Tasks in your account</div>
+                <div class="stat-note">Personal tasks + group assignments</div>
             </article>
 
             <article class="stat">
                 <div class="stat-label">Completed</div>
                 <div class="stat-value" id="completedTasks">—</div>
-                <div class="stat-note">Finished personal tasks</div>
+                <div class="stat-note">Finished across everything</div>
             </article>
 
             <article class="stat">
                 <div class="stat-label">Pending</div>
                 <div class="stat-value" id="pendingTasks">—</div>
-                <div class="stat-note">Not completed yet</div>
+                <div class="stat-note" id="pendingNote">Not completed yet</div>
             </article>
 
             <article class="stat">
@@ -299,7 +367,7 @@
                 <div class="progress-track">
                     <div class="progress-fill" id="overallBar"></div>
                 </div>
-                <div class="stat-note">Based on personal tasks</div>
+                <div class="stat-note">Across all your tasks</div>
             </article>
         </section>
 
@@ -310,10 +378,10 @@
             </div>
 
             <form id="personalTaskForm" style="display:grid;gap:10px;margin-bottom:18px;">
-                <input id="newTaskTitle" type="text" maxlength="200" required
+                <input id="newTaskTitle" type="text" aria-label="New personal task title" maxlength="200" required
                     placeholder="New personal task title"
                     style="padding:12px;border:1px solid var(--border);border-radius:10px;">
-                <input id="newTaskDue" type="date"
+                <input id="newTaskDue" type="date" aria-label="Due date"
                     style="padding:12px;border:1px solid var(--border);border-radius:10px;">
                 <button type="submit" id="addTaskButton">Add personal task</button>
             </form>
@@ -337,20 +405,26 @@
     </main>
 
     <script type="module">
-        import { auth, db } from "../core/firebase-config.js";
-
+        import { auth } from "../core/firebase-config.js";
         import {
             onAuthStateChanged
         } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
 
         import {
-            collection,
-            getDocs,
-            doc,
-            getDoc,
-            setDoc,
-            serverTimestamp
-        } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+            listPersonalTasks,
+            createPersonalTask,
+            updatePersonalTask,
+            deletePersonalTask
+        } from "../engine/taskEngine.js";
+        import { listJoinedGroups, listGroupMembers } from "../engine/groupEngine.js";
+        import {
+            listGroupTasks,
+            getTaskProgress,
+            getSubmission,
+            loadMemberProgressMatrix
+        } from "../engine/progressEngine.js";
+        import { toDate, safeTaskStatus, canManageAssignments } from "../engine/dataEngine.js";
+        import { groupPageUrl } from "../dynamic/navigation.js";
 
         const $ = id => document.getElementById(id);
 
@@ -363,49 +437,102 @@
         let currentUser = null;
         let loadSequence = 0;
 
+        const STATUS_LABEL = {
+            pending: "pending",
+            in_progress: "in progress",
+            completed: "completed"
+        };
+
+        // ---------- date helpers ----------
+        // Personal tasks store "YYYY-MM-DD"; group deadlines are Firestore Timestamps.
+        function parseDue(value) {
+            if (!value) return null;
+            if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+                const [y, m, d] = value.split("-").map(Number);
+                return { date: new Date(y, m - 1, d), dateOnly: true };
+            }
+            const date = toDate(value);
+            return date ? { date, dateOnly: false } : null;
+        }
+
+        function isLate(value, status) {
+            if (status === "completed") return false;
+            const due = parseDue(value);
+            if (!due) return false;
+            if (due.dateOnly) {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                return due.date < today;
+            }
+            return due.date < new Date();
+        }
+
+        function formatDue(value) {
+            const due = parseDue(value);
+            if (!due) return "No due date";
+            return due.dateOnly
+                ? due.date.toLocaleDateString()
+                : due.date.toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
+        }
+
+        function dueTime(value) {
+            const due = parseDue(value);
+            return due ? due.date.getTime() : Infinity;
+        }
+
+        // Open work first (late, then soonest deadline), finished work last.
+        function byUrgency(a, b) {
+            const aDone = a.status === "completed" ? 1 : 0;
+            const bDone = b.status === "completed" ? 1 : 0;
+            if (aDone !== bDone) return aDone - bDone;
+            return dueTime(a.dueDate) - dueTime(b.dueDate);
+        }
+
+        // ---------- small DOM helpers ----------
         function setText(id, value) {
             $(id).textContent = value;
         }
 
-        function dateValue(value) {
-            if (!value) return null;
-            if (typeof value.toDate === "function") return value.toDate();
-
-            const date = new Date(value);
-            return Number.isNaN(date.getTime()) ? null : date;
+        function makeChip(label, className) {
+            const chip = document.createElement("span");
+            chip.className = `status ${className}`;
+            chip.textContent = label;
+            return chip;
         }
 
-        function formatDate(value) {
-            const date = dateValue(value);
-            if (!date) return "No due date";
-            return date.toLocaleDateString();
+        function emptyBox(message, className = "empty") {
+            const box = document.createElement("div");
+            box.className = className;
+            box.textContent = message;
+            return box;
         }
 
-        function safeStatus(status) {
-            return ["pending", "in_progress", "completed"].includes(status)
-                ? status
-                : "pending";
+        function reviewChip(item) {
+            if (item.review === "accepted") return makeChip("accepted", "accepted");
+            if (item.review === "needs_revision") {
+                return makeChip("needs revision", "needs_revision");
+            }
+            if (item.submitted) return makeChip("submitted", "submitted");
+            return null;
         }
 
+        // ---------- personal tasks ----------
         function renderPersonalTasks(tasks) {
             const list = $("personalList");
             list.replaceChildren();
 
             if (!tasks.length) {
-                const empty = document.createElement("div");
-                empty.className = "empty";
-                empty.textContent = "No personal tasks found yet.";
-                list.appendChild(empty);
+                list.appendChild(emptyBox("No personal tasks yet. Add your first one above."));
                 return;
             }
 
-            tasks.sort((a, b) => {
-                const aDone = a.status === "completed" ? 1 : 0;
-                const bDone = b.status === "completed" ? 1 : 0;
-                return aDone - bDone;
-            });
+            const rows = tasks
+                .map(task => ({ ...task, status: safeTaskStatus(task.status) }))
+                .sort(byUrgency);
 
-            for (const task of tasks.slice(0, 30)) {
+            for (const task of rows.slice(0, 50)) {
+                const late = isLate(task.dueDate, task.status);
+
                 const row = document.createElement("div");
                 row.className = "task-row";
 
@@ -417,215 +544,383 @@
                 const meta = document.createElement("div");
                 meta.className = "task-meta";
                 meta.textContent = task.dueDate
-                    ? `Due: ${formatDate(task.dueDate)}`
-                    : "Personal task";
-
+                    ? `Due: ${formatDue(task.dueDate)}`
+                    : "No due date";
                 details.append(title, meta);
 
                 const actions = document.createElement("div");
-                actions.style.display = "flex";
-                actions.style.flexDirection = "column";
-                actions.style.alignItems = "flex-end";
-                actions.style.gap = "8px";
+                actions.className = "chips";
 
-                const status = document.createElement("span");
-                status.className = `status ${safeStatus(task.status)}`;
-                status.textContent = safeStatus(task.status).replace("_", " ");
+                if (late) actions.appendChild(makeChip("overdue", "overdue"));
+                actions.appendChild(makeChip(STATUS_LABEL[task.status], task.status));
 
-                const toggle = document.createElement("button");
-                toggle.type = "button";
-                toggle.textContent = task.status === "completed"
-                    ? "Mark incomplete"
-                    : "Mark complete";
-                toggle.style.fontSize = "12px";
-                toggle.style.padding = "6px 10px";
+                const select = document.createElement("select");
+                select.className = "inline";
+                select.setAttribute("aria-label", `Status for ${task.title || "task"}`);
+                for (const value of Object.keys(STATUS_LABEL)) {
+                    const option = document.createElement("option");
+                    option.value = value;
+                    option.textContent = STATUS_LABEL[value];
+                    option.selected = value === task.status;
+                    select.appendChild(option);
+                }
 
-                toggle.addEventListener("click", async () => {
-                    toggle.disabled = true;
+                select.addEventListener("change", async () => {
+                    select.disabled = true;
                     try {
-                        const taskRef = doc(
-                            db, "users", currentUser.uid,
-                            "personalTasks", task.id
-                        );
-                        const nextCompleted = task.status !== "completed";
-
-                        await setDoc(taskRef, {
-                            title: task.title || "Untitled task",
-                            dueDate: task.dueDate || null,
-                            status: nextCompleted ? "completed" : "pending",
-                            completedAt: nextCompleted
-                                ? serverTimestamp()
-                                : null,
-                            updatedAt: serverTimestamp()
-                        }, { merge: true });
-
+                        await updatePersonalTask(currentUser.uid, task.id, {
+                            status: select.value
+                        });
                         await loadProgress(currentUser, ++loadSequence);
                     } catch (error) {
                         console.error("Personal task update failed:", error);
-                    } finally {
-                        toggle.disabled = false;
+                        setText("pageMessage", "Could not update the task.");
+                        $("pageMessage").className = "subtitle error";
+                        select.disabled = false;
                     }
                 });
 
-                actions.append(status, toggle);
+                // Two-step delete (no browser dialogs): first click arms, second deletes.
+                const remove = document.createElement("button");
+                remove.type = "button";
+                remove.className = "ghost";
+                remove.textContent = "Delete";
+                let armTimer = null;
+
+                remove.addEventListener("click", async () => {
+                    if (!armTimer) {
+                        remove.textContent = "Confirm?";
+                        armTimer = setTimeout(() => {
+                            remove.textContent = "Delete";
+                            armTimer = null;
+                        }, 3000);
+                        return;
+                    }
+
+                    clearTimeout(armTimer);
+                    remove.disabled = true;
+                    try {
+                        await deletePersonalTask(currentUser.uid, task.id);
+                        await loadProgress(currentUser, ++loadSequence);
+                    } catch (error) {
+                        console.error("Personal task delete failed:", error);
+                        setText("pageMessage", "Could not delete the task.");
+                        $("pageMessage").className = "subtitle error";
+                        remove.disabled = false;
+                        remove.textContent = "Delete";
+                        armTimer = null;
+                    }
+                });
+
+                actions.append(select, remove);
                 row.append(details, actions);
                 list.appendChild(row);
             }
         }
 
-        function renderGroupProgress(groups) {
+        // ---------- group data ----------
+        async function summarizeStudentGroup(group, tasks) {
+            const rows = await Promise.all(tasks.map(async task => {
+                const [progress, submission] = await Promise.all([
+                    getTaskProgress(group.id, task.id, currentUser.uid),
+                    getSubmission(group.id, task.id, currentUser.uid)
+                ]);
+
+                return {
+                    id: task.id,
+                    title: task.title || "Untitled assignment",
+                    dueDate: task.dueDate,
+                    status: safeTaskStatus(progress?.status),
+                    submitted: Boolean(submission?.content),
+                    review: submission?.reviewStatus || null
+                };
+            }));
+
+            return {
+                id: group.id,
+                name: group.name || "Unnamed group",
+                role: "student",
+                total: rows.length,
+                completed: rows.filter(r => r.status === "completed").length,
+                inProgress: rows.filter(r => r.status === "in_progress").length,
+                late: rows.filter(r => isLate(r.dueDate, r.status)).length,
+                rows
+            };
+        }
+
+        async function summarizeStaffGroup(group, tasks) {
+            const members = await listGroupMembers(group.id);
+            const students = members.filter(member => member.role === "student");
+            const studentUids = students.map(student => student.uid);
+
+            const matrix = await loadMemberProgressMatrix(
+                group.id,
+                tasks.map(task => task.id),
+                studentUids
+            );
+
+            let doneCells = 0;
+            for (const row of matrix.values()) {
+                for (const status of row.values()) {
+                    if (status === "completed") doneCells += 1;
+                }
+            }
+
+            const submissions = await Promise.all(
+                tasks.flatMap(task =>
+                    studentUids.map(uid => getSubmission(group.id, task.id, uid)))
+            );
+            const awaitingReview = submissions.filter(sub =>
+                sub?.content && (!sub.reviewStatus || sub.reviewStatus === "pending")
+            ).length;
+
+            return {
+                id: group.id,
+                name: group.name || "Unnamed group",
+                role: group.myRole,
+                total: tasks.length,
+                students: students.length,
+                expected: tasks.length * students.length,
+                completed: doneCells,
+                awaitingReview
+            };
+        }
+
+        async function summarizeGroup(group) {
+            const tasks = await listGroupTasks(group.id);
+            return canManageAssignments(group.myRole)
+                ? summarizeStaffGroup(group, tasks)
+                : summarizeStudentGroup(group, tasks);
+        }
+
+        function renderGroupCard(summary) {
+            const card = document.createElement("div");
+            card.className = "group-progress";
+
+            const head = document.createElement("div");
+            head.className = "group-head";
+
+            const title = document.createElement("div");
+            title.className = "group-title";
+            title.textContent = summary.name;
+
+            const link = document.createElement("a");
+            link.className = "open-link";
+            link.href = groupPageUrl(summary.id);
+            link.target = "_top";
+            link.textContent = "Open group →";
+            head.append(title, link);
+
+            const staff = canManageAssignments(summary.role);
+            const denominator = staff ? summary.expected : summary.total;
+            const percent = denominator
+                ? Math.round(summary.completed / denominator * 100)
+                : 0;
+
+            const numbers = document.createElement("div");
+            numbers.className = "group-numbers";
+            if (staff) {
+                numbers.textContent = summary.total
+                    ? `Teaching · ${summary.total} assignments · ${summary.students} students · ` +
+                    `class completion ${percent}% · ${summary.awaitingReview} awaiting review`
+                    : "Teaching · no assignments created yet";
+            } else {
+                numbers.textContent = summary.total
+                    ? `${summary.completed} of ${summary.total} assignments completed · ${percent}%` +
+                    (summary.inProgress ? ` · ${summary.inProgress} in progress` : "") +
+                    (summary.late ? ` · ${summary.late} overdue` : "")
+                    : "No assignments yet";
+            }
+
+            const track = document.createElement("div");
+            track.className = "progress-track";
+            const fill = document.createElement("div");
+            fill.className = "progress-fill";
+            fill.style.width = `${percent}%`;
+            track.appendChild(fill);
+
+            card.append(head, numbers, track);
+
+            if (!staff && summary.rows.length) {
+                const rows = [...summary.rows].sort(byUrgency);
+                for (const item of rows.slice(0, 6)) {
+                    const row = document.createElement("div");
+                    row.className = "task-row";
+
+                    const details = document.createElement("div");
+                    const name = document.createElement("div");
+                    name.className = "task-name";
+                    name.textContent = item.title;
+                    const meta = document.createElement("div");
+                    meta.className = "task-meta";
+                    meta.textContent = `Deadline: ${formatDue(item.dueDate)}`;
+                    details.append(name, meta);
+
+                    const chips = document.createElement("div");
+                    chips.className = "chips";
+                    if (isLate(item.dueDate, item.status)) {
+                        chips.appendChild(makeChip("overdue", "overdue"));
+                    }
+                    const review = reviewChip(item);
+                    if (review) chips.appendChild(review);
+                    chips.appendChild(makeChip(STATUS_LABEL[item.status], item.status));
+
+                    row.append(details, chips);
+                    card.appendChild(row);
+                }
+
+                if (rows.length > 6) {
+                    const more = document.createElement("div");
+                    more.className = "task-meta";
+                    more.textContent = `+ ${rows.length - 6} more in the group page`;
+                    card.appendChild(more);
+                }
+            }
+
+            return card;
+        }
+
+        function renderGroups(summaries, failedCount) {
             const list = $("groupList");
             list.replaceChildren();
 
-            if (!groups.length) {
-                const empty = document.createElement("div");
-                empty.className = "empty";
-                empty.textContent =
-                    "No group assignments found. Join a group to see its progress.";
-                list.appendChild(empty);
+            if (!summaries.length && !failedCount) {
+                list.appendChild(emptyBox(
+                    "No groups yet. Join or create a group to see its progress."
+                ));
                 return;
             }
 
-            for (const group of groups) {
-                const section = document.createElement("div");
-                section.className = "group-progress";
+            for (const summary of summaries) {
+                list.appendChild(renderGroupCard(summary));
+            }
 
-                const title = document.createElement("div");
-                title.className = "group-title";
-                title.textContent = group.name;
-
-                const total = group.total;
-                const completed = group.completed;
-                const percent = total ? Math.round(completed / total * 100) : 0;
-
-                const numbers = document.createElement("div");
-                numbers.className = "group-numbers";
-                numbers.textContent =
-                    `${completed} of ${total} assignments completed · ${percent}%`;
-
-                const track = document.createElement("div");
-                track.className = "progress-track";
-
-                const fill = document.createElement("div");
-                fill.className = "progress-fill";
-                fill.style.width = `${percent}%`;
-
-                track.appendChild(fill);
-                section.append(title, numbers, track);
-                list.appendChild(section);
+            if (failedCount) {
+                list.appendChild(emptyBox(
+                    `${failedCount} group${failedCount === 1 ? "" : "s"} could not be loaded.`,
+                    "message error"
+                ));
             }
         }
 
+        // ---------- summary cards ----------
+        function renderTotals(personalTasks, groupSummaries) {
+            const personal = personalTasks.map(task => ({
+                status: safeTaskStatus(task.status),
+                dueDate: task.dueDate
+            }));
+
+            const studentGroups = groupSummaries.filter(
+                summary => !canManageAssignments(summary.role)
+            );
+
+            const groupItems = studentGroups.flatMap(summary =>
+                summary.rows.map(row => ({ status: row.status, dueDate: row.dueDate }))
+            );
+
+            const all = [...personal, ...groupItems];
+            const total = all.length;
+            const completed = all.filter(item => item.status === "completed").length;
+            const inProgress = all.filter(item => item.status === "in_progress").length;
+            const late = all.filter(item => isLate(item.dueDate, item.status)).length;
+            const rate = total ? Math.round(completed / total * 100) : 0;
+
+            setText("totalTasks", total);
+            setText("completedTasks", completed);
+            setText("pendingTasks", total - completed);
+            setText("completionRate", `${rate}%`);
+            setText(
+                "pendingNote",
+                total - completed
+                    ? `${inProgress} in progress · ${late} overdue`
+                    : "Nothing left. Great work!"
+            );
+            $("overallBar").style.width = `${rate}%`;
+        }
+
+        // ---------- loading ----------
         async function loadProgress(user, sequence) {
             refreshButton.disabled = true;
+            $("pageMessage").className = "subtitle";
             setText("pageMessage", "Updating progress...");
 
+            let personalTasks = [];
+            let personalOk = true;
+            let groupSummaries = [];
+            let failedGroups = 0;
+            let groupsOk = true;
+
             try {
-                // 1. Personal tasks
-                const personalSnapshot = await getDocs(
-                    collection(db, "users", user.uid, "personalTasks")
-                );
+                personalTasks = await listPersonalTasks(user.uid);
+            } catch (error) {
+                personalOk = false;
+                console.error("Personal tasks failed:", error);
+            }
 
-                if (sequence !== loadSequence) return;
+            if (sequence !== loadSequence) return;
 
-                const personalTasks = personalSnapshot.docs.map(item => ({
-                    id: item.id,
-                    ...item.data()
-                }));
-
-                const completed = personalTasks.filter(
-                    task => task.status === "completed"
-                ).length;
-
-                const pending = personalTasks.length - completed;
-                const rate = personalTasks.length
-                    ? Math.round(completed / personalTasks.length * 100)
-                    : 0;
-
-                setText("totalTasks", personalTasks.length);
-                setText("completedTasks", completed);
-                setText("pendingTasks", pending);
-                setText("completionRate", `${rate}%`);
-                setText("personalSummary", `${personalTasks.length} tasks`);
-                $("overallBar").style.width = `${rate}%`;
-
+            if (personalOk) {
                 renderPersonalTasks(personalTasks);
-
-                const joinedSnapshot = await getDocs(
-                    collection(db, "users", user.uid, "joinedGroups")
+                const done = personalTasks.filter(
+                    task => safeTaskStatus(task.status) === "completed"
+                ).length;
+                setText("personalSummary", `${personalTasks.length} tasks · ${done} done`);
+            } else {
+                $("personalList").replaceChildren(
+                    emptyBox("Could not load personal tasks.", "message error")
                 );
+                setText("personalSummary", "Unavailable");
+            }
 
-                if (sequence !== loadSequence) return;
+            try {
+                const groups = await listJoinedGroups(user);
+                const results = await Promise.allSettled(groups.map(summarizeGroup));
 
-                const groups = [];
+                groupSummaries = results
+                    .filter(result => result.status === "fulfilled")
+                    .map(result => result.value);
 
-                for (const joinedDoc of joinedSnapshot.docs) {
-                    const groupId = joinedDoc.id;
+                failedGroups = results.length - groupSummaries.length;
+                results
+                    .filter(result => result.status === "rejected")
+                    .forEach(result => console.error("Group summary failed:", result.reason));
+            } catch (error) {
+                groupsOk = false;
+                console.error("Groups failed:", error);
+            }
 
-                    const groupSnapshot = await getDoc(doc(db, "groups", groupId));
-                    if (!groupSnapshot.exists()) continue;
+            if (sequence !== loadSequence) return;
 
-                    const groupData = groupSnapshot.data();
+            if (groupsOk) {
+                renderGroups(groupSummaries, failedGroups);
 
-                    const tasksSnapshot = await getDocs(
-                        collection(db, "groups", groupId, "tasks")
-                    );
-
-                    if (sequence !== loadSequence) return;
-
-                    let completedCount = 0;
-
-                    for (const taskDoc of tasksSnapshot.docs) {
-                        const completionSnap = await getDoc(
-                            doc(
-                                db, "groups", groupId, "tasks",
-                                taskDoc.id, "completions", user.uid
-                            )
-                        );
-
-                        if (completionSnap.exists()
-                            && completionSnap.data().status === "completed") {
-                            completedCount += 1;
-                        }
-                    }
-
-                    const total = tasksSnapshot.size;
-
-                    groups.push({
-                        name: groupData.name || "Unnamed group",
-                        total,
-                        completed: completedCount
-                    });
-                }
-
-                if (sequence !== loadSequence) return;
-
-                renderGroupProgress(groups);
-
-                const groupTaskCount = groups.reduce(
-                    (sum, group) => sum + group.total, 0
+                const assignmentCount = groupSummaries.reduce(
+                    (sum, summary) => sum + summary.total, 0
                 );
-
                 setText(
                     "groupSummary",
-                    `${groups.length} groups · ${groupTaskCount} assignments`
+                    `${groupSummaries.length} groups · ${assignmentCount} assignments`
                 );
+            } else {
+                $("groupList").replaceChildren(
+                    emptyBox("Could not load groups.", "message error")
+                );
+                setText("groupSummary", "Unavailable");
+            }
 
-                setText("pageMessage", "Progress updated successfully.");
-            } catch (error) {
-                console.error("Progress loading failed:", error);
+            if (personalOk || groupsOk) renderTotals(personalTasks, groupSummaries);
 
+            if (personalOk && groupsOk && !failedGroups) {
+                setText("pageMessage", "Progress is up to date.");
+            } else {
                 setText(
                     "pageMessage",
-                    "Unable to load some progress data. Check Firestore rules and console."
+                    "Some progress data could not be loaded. Check your connection and Firestore rules."
                 );
-
                 $("pageMessage").className = "subtitle error";
-            } finally {
-                if (sequence === loadSequence) {
-                    refreshButton.disabled = false;
-                }
             }
+
+            refreshButton.disabled = false;
         }
 
         refreshButton.addEventListener("click", () => {
@@ -643,29 +938,17 @@
             addTaskButton.disabled = true;
 
             try {
-                const taskRef = doc(
-                    collection(db, "users", currentUser.uid, "personalTasks")
-                );
-
-                const payload = {
+                await createPersonalTask(currentUser.uid, {
                     title,
-                    status: "pending",
-                    createdAt: serverTimestamp(),
-                    updatedAt: serverTimestamp(),
-                    completedAt: null
-                };
-
-                if (newTaskDue.value) {
-                    payload.dueDate = newTaskDue.value;
-                }
-
-                await setDoc(taskRef, payload);
+                    dueDate: newTaskDue.value || null
+                });
 
                 personalTaskForm.reset();
                 await loadProgress(currentUser, ++loadSequence);
             } catch (error) {
                 console.error("Add personal task failed:", error);
                 setText("pageMessage", "Could not add personal task.");
+                $("pageMessage").className = "subtitle error";
             } finally {
                 addTaskButton.disabled = false;
             }
@@ -673,7 +956,8 @@
 
         onAuthStateChanged(auth, user => {
             if (!user) {
-                window.location.replace("./account.html");
+                // This page can run inside the app's iframe; leave the whole app.
+                window.top.location.replace(new URL("./account.html", window.location.href).href);
                 return;
             }
 

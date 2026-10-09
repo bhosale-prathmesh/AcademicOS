@@ -1,5 +1,5 @@
 import { isOverdue, safeTaskStatus } from "../engine/dataEngine.js";
-import { isOllamaReachable, generatePrioritization } from "./ollamaClient.js";
+import { checkOllama, pickModel, generatePrioritization } from "./ollamaClient.js";
 import { buildPriorityPrompt } from "./promptBuilder.js";
 import { parsePriorityResponse } from "./responseParser.js";
 
@@ -36,14 +36,14 @@ export function ruleBasedPriority(tasks) {
     return {
       source: "rules",
       taskId: null,
-      reason: "All personal tasks are completed. Great work!"
+      reason: "Nothing open right now. Great work!"
     };
   }
 
   const ranked = [...openTasks].sort((a, b) => scoreTask(b) - scoreTask(a));
   const top = ranked[0];
 
-  let reason = "Highest rule-based score";
+  let reason = "Highest rule-based score.";
   if (isOverdue(top.dueDate, top.status)) {
     reason = "This task is overdue.";
   } else if (top.dueDate) {
@@ -61,28 +61,32 @@ export function ruleBasedPriority(tasks) {
   };
 }
 
+// Returns { source: "ai" | "rules", taskId, reason, aiStatus, model? }.
+// aiStatus: ok | idle | unreachable | no_models | timeout | bad_response | failed
 export async function recommendNextTask(tasks, options = {}) {
   const openTasks = tasks.filter(
     task => safeTaskStatus(task.status) !== "completed"
   );
 
   if (!openTasks.length) {
-    return {
-      source: "rules",
-      taskId: null,
-      reason: "No open tasks to prioritize."
-    };
+    return { ...ruleBasedPriority(tasks), aiStatus: "idle" };
   }
 
-  const reachable = await isOllamaReachable(options.baseUrl);
+  const rules = ruleBasedPriority(tasks);
+  const ollama = await checkOllama(options.baseUrl);
 
-  if (!reachable) {
-    return ruleBasedPriority(tasks);
+  if (!ollama.ok) {
+    return { ...rules, aiStatus: "unreachable", detail: ollama.error };
+  }
+
+  const model = pickModel(ollama.models, options.model);
+  if (!model) {
+    return { ...rules, aiStatus: "no_models" };
   }
 
   try {
     const prompt = buildPriorityPrompt(openTasks);
-    const raw = await generatePrioritization(prompt, options);
+    const raw = await generatePrioritization(prompt, { ...options, model });
     const parsed = parsePriorityResponse(
       raw,
       openTasks.map(task => task.id)
@@ -92,12 +96,20 @@ export async function recommendNextTask(tasks, options = {}) {
       return {
         source: "ai",
         taskId: parsed.taskId,
-        reason: parsed.reason
+        reason: parsed.reason.slice(0, 300),
+        aiStatus: "ok",
+        model
       };
     }
+
+    return { ...rules, aiStatus: "bad_response", model };
   } catch (error) {
     console.warn("Ollama prioritization failed:", error);
+    return {
+      ...rules,
+      aiStatus: error?.name === "TimeoutError" ? "timeout" : "failed",
+      model,
+      detail: error?.message
+    };
   }
-
-  return ruleBasedPriority(tasks);
 }

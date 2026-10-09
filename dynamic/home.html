@@ -150,6 +150,58 @@
             font-size: 12px;
         }
 
+        /* Activity details */
+        .heat-months {
+            display: grid;
+            grid-auto-flow: column;
+            grid-auto-columns: 13px;
+            gap: 4px;
+            width: max-content;
+            height: 16px;
+            margin-bottom: 4px;
+        }
+
+        .heat-months span {
+            overflow: visible;
+            white-space: nowrap;
+            color: var(--muted);
+            font-size: 11px;
+            line-height: 16px;
+        }
+
+        .activity-stats {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px;
+            margin-top: 16px;
+        }
+
+        .act-stat {
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: #fff;
+            min-width: 0;
+        }
+
+        .act-value {
+            font-size: 19px;
+            font-weight: 750;
+            overflow-wrap: anywhere;
+        }
+
+        .act-label {
+            margin-top: 3px;
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        @media (max-width: 640px) {
+            .activity-stats {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
         /* Groups */
         .groups-grid {
             display: grid;
@@ -461,6 +513,7 @@
                 Loading task recommendation...
             </p>
             <p id="priorityTask" style="margin:12px 0 0;font-size:15px;font-weight:700;"></p>
+            <p id="priorityHint" style="margin:8px 0 0;font-size:12px;color:var(--muted);"></p>
             <button type="button" id="refreshPriorityButton" class="action-button primary"
                 style="margin-top:14px;">Refresh recommendation</button>
         </section>
@@ -473,8 +526,11 @@
             </div>
 
             <div id="heatmap-scroll">
+                <div id="heatmap-months" class="heat-months" aria-hidden="true"></div>
                 <div id="heatmap" aria-label="Daily completed task activity"></div>
             </div>
+
+            <div id="activity-stats" class="activity-stats"></div>
 
             <div class="legend">
                 Less
@@ -508,7 +564,7 @@
         <section class="panel">
             <div class="panel-heading">
                 <h2>Completed tasks</h2>
-                <span class="count">Last 3 days</span>
+                <span class="count" id="recent-count">Last 3 days</span>
             </div>
 
             <div id="task-list">
@@ -562,15 +618,20 @@
         import { onAuthStateChanged } from
             "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
         import { createGroup, listCreatedGroups } from "../engine/groupEngine.js";
-        import { listPersonalTasks } from "../engine/taskEngine.js";
+        import { loadActivityEvents } from "../engine/activityengine.js";
         import { dateKey, toDate } from "../engine/dataEngine.js";
         import { recommendNextTask } from "../AIservice/priorityEngine.js";
+        import { loadOpenWork } from "../AIservice/workengine.js";
         import { groupPageUrl } from "./navigation.js";
         import { showToast } from "../engine/uiEngine.js";
 
         const $ = (id) => document.getElementById(id);
 
         const heatmap = $("heatmap");
+        const heatmapMonths = $("heatmap-months");
+        const heatmapScroll = $("heatmap-scroll");
+        const activityStats = $("activity-stats");
+        const recentCount = $("recent-count");
         const activityTotal = $("activity-total");
         const taskList = $("task-list");
 
@@ -590,6 +651,7 @@
         const prioritySource = $("prioritySource");
         const priorityMessage = $("priorityMessage");
         const priorityTask = $("priorityTask");
+        const priorityHint = $("priorityHint");
         const refreshPriorityButton = $("refreshPriorityButton");
 
         let currentUser = null;
@@ -624,20 +686,129 @@
 
         // ---------------- ACTIVITY HEATMAP ----------------
 
-        function renderHeatmap(tasks) {
+        function dayLabel(date) {
+            return date.toLocaleDateString([], {
+                weekday: "short",
+                day: "numeric",
+                month: "short",
+                year: "numeric"
+            });
+        }
+
+        function plural(count, word) {
+            return `${count} ${word}${count === 1 ? "" : "s"}`;
+        }
+
+        // Groups events by local calendar day: key -> { count, titles }
+        function groupByDay(events) {
+            const days = new Map();
+
+            for (const event of events) {
+                const key = dateKey(event.date);
+                const entry = days.get(key) || { count: 0, titles: [] };
+                entry.count += 1;
+                entry.titles.push(event.title);
+                days.set(key, entry);
+            }
+
+            return days;
+        }
+
+        function heatLevel(count, max) {
+            if (count <= 0) return 0;
+            if (max <= 4) return Math.min(count, 4);
+            return Math.max(1, Math.min(4, Math.ceil(count / max * 4)));
+        }
+
+        function computeStats(days, firstVisibleDay, today) {
+            const active = date => (days.get(dateKey(date))?.count || 0) > 0;
+
+            // Current streak: today counts, but an empty today does not break it yet.
+            const cursor = new Date(today);
+            if (!active(cursor)) cursor.setDate(cursor.getDate() - 1);
+
+            let current = 0;
+            while (cursor >= firstVisibleDay && active(cursor)) {
+                current += 1;
+                cursor.setDate(cursor.getDate() - 1);
+            }
+
+            let longest = 0;
+            let run = 0;
+            let activeDays = 0;
+            let bestCount = 0;
+            let bestDate = null;
+
+            for (
+                const day = new Date(firstVisibleDay);
+                day <= today;
+                day.setDate(day.getDate() + 1)
+            ) {
+                const count = days.get(dateKey(day))?.count || 0;
+
+                if (count > 0) {
+                    activeDays += 1;
+                    run += 1;
+                    longest = Math.max(longest, run);
+                } else {
+                    run = 0;
+                }
+
+                if (count > bestCount) {
+                    bestCount = count;
+                    bestDate = new Date(day);
+                }
+            }
+
+            return { current, longest, activeDays, bestCount, bestDate };
+        }
+
+        function renderStats(stats) {
+            if (!activityStats) return;
+            activityStats.replaceChildren();
+
+            const items = [
+                [plural(stats.current, "day"), "Current streak"],
+                [plural(stats.longest, "day"), "Longest streak"],
+                [String(stats.activeDays), "Active days"],
+                [
+                    stats.bestDate
+                        ? `${stats.bestCount} on ${stats.bestDate.toLocaleDateString([], {
+                            day: "numeric",
+                            month: "short"
+                        })}`
+                        : "-",
+                    "Best day"
+                ]
+            ];
+
+            for (const [value, label] of items) {
+                const box = document.createElement("div");
+                box.className = "act-stat";
+
+                const valueEl = document.createElement("div");
+                valueEl.className = "act-value";
+                valueEl.textContent = value;
+
+                const labelEl = document.createElement("div");
+                labelEl.className = "act-label";
+                labelEl.textContent = label;
+
+                box.append(valueEl, labelEl);
+                activityStats.appendChild(box);
+            }
+        }
+
+        function renderHeatmap(events, partial = false) {
             if (!heatmap || !activityTotal) return;
 
             heatmap.replaceChildren();
+            heatmapMonths?.replaceChildren();
 
-            const counts = new Map();
+            const days = groupByDay(events);
 
-            for (const task of tasks) {
-                const completedDate = toDate(task.completedAt);
-                if (!completedDate) continue;
-
-                const key = dateKey(completedDate);
-                counts.set(key, (counts.get(key) || 0) + 1);
-            }
+            let max = 0;
+            for (const entry of days.values()) max = Math.max(max, entry.count);
 
             const today = new Date();
             today.setHours(0, 0, 0, 0);
@@ -656,38 +827,89 @@
                 day.setDate(day.getDate() + 1)
             ) {
                 const key = dateKey(day);
-                const count = counts.get(key) || 0;
+                const entry = days.get(key);
+                const count = entry?.count || 0;
+                const visible = day >= firstVisibleDay;
 
-                if (day >= firstVisibleDay && day <= today) {
-                    total += count;
-                }
+                if (visible) total += count;
 
                 const cell = document.createElement("div");
                 cell.className = "day";
 
-                if (day < firstVisibleDay || day > today) {
+                if (!visible) {
                     cell.classList.add("empty");
+                    heatmap.appendChild(cell);
+                    continue;
                 }
 
-                let level = 0;
-                if (count >= 1) level = 1;
-                if (count >= 2) level = 2;
-                if (count >= 4) level = 3;
-                if (count >= 6) level = 4;
+                cell.dataset.level = String(heatLevel(count, max));
 
-                cell.dataset.level = String(level);
-                cell.title = `${count} completed task(s) on ${key}`;
-                cell.setAttribute("aria-label", cell.title);
+                const label = dayLabel(day);
+                if (count) {
+                    const shown = entry.titles.slice(0, 3).map(title => `• ${title}`);
+                    if (entry.titles.length > 3) {
+                        shown.push(`+ ${entry.titles.length - 3} more`);
+                    }
+                    cell.title = `${plural(count, "task")} completed on ${label}\n${shown.join("\n")}`;
+                } else {
+                    cell.title = `No completed tasks on ${label}`;
+                }
+                cell.setAttribute("aria-label", cell.title.replace(/\n/g, ". "));
 
                 heatmap.appendChild(cell);
             }
 
-            activityTotal.textContent = `${total} completions`;
+            // Month labels, one per week column.
+            if (heatmapMonths) {
+                const labels = [];
+                let lastMonth = -1;
+                const weeks = Math.ceil(heatmap.children.length / 7);
+
+                for (let week = 0; week < weeks; week += 1) {
+                    const weekStart = new Date(gridStart);
+                    weekStart.setDate(weekStart.getDate() + week * 7);
+                    const reference = weekStart < firstVisibleDay ? firstVisibleDay : weekStart;
+
+                    if (reference > today) break;
+                    if (reference.getMonth() !== lastMonth) {
+                        lastMonth = reference.getMonth();
+                        labels.push({
+                            column: week,
+                            text: reference.toLocaleDateString([], { month: "short" })
+                        });
+                    }
+                }
+
+                // Avoid overlapping labels when the first month is only a sliver.
+                if (labels.length > 1 && labels[1].column - labels[0].column < 3) {
+                    labels.shift();
+                }
+
+                const labelByColumn = new Map(labels.map(item => [item.column, item.text]));
+                for (let week = 0; week < weeks; week += 1) {
+                    const span = document.createElement("span");
+                    span.textContent = labelByColumn.get(week) || "";
+                    heatmapMonths.appendChild(span);
+                }
+            }
+
+            renderStats(computeStats(days, firstVisibleDay, today));
+
+            activityTotal.textContent =
+                `${plural(total, "completion")} in the last year` +
+                (partial ? " (some data unavailable)" : "");
+
+            // Newest weeks are on the right; show them first on small screens.
+            if (heatmapScroll) {
+                requestAnimationFrame(() => {
+                    heatmapScroll.scrollLeft = heatmapScroll.scrollWidth;
+                });
+            }
         }
 
         // ---------------- RECENT COMPLETED TASKS ----------------
 
-        function renderRecentTasks(tasks) {
+        function renderRecentTasks(events) {
             if (!taskList) return;
 
             taskList.replaceChildren();
@@ -697,19 +919,15 @@
             cutoff.setHours(0, 0, 0, 0);
             cutoff.setDate(cutoff.getDate() - 2);
 
-            const recent = tasks
-                .map(task => ({
-                    ...task,
-                    completionDate: toDate(task.completedAt)
-                }))
-                .filter(task =>
-                    task.completionDate &&
-                    task.completionDate >= cutoff &&
-                    task.completionDate <= now
-                )
-                .sort((a, b) =>
-                    b.completionDate - a.completionDate
-                );
+            const recent = events
+                .filter(event => event.date >= cutoff && event.date <= now)
+                .sort((a, b) => b.date - a.date);
+
+            if (recentCount) {
+                recentCount.textContent = recent.length
+                    ? `Last 3 days · ${recent.length}`
+                    : "Last 3 days";
+            }
 
             if (recent.length === 0) {
                 const empty = document.createElement("div");
@@ -721,7 +939,7 @@
                 return;
             }
 
-            for (const task of recent) {
+            for (const event of recent) {
                 const card = document.createElement("article");
                 card.className = "task";
 
@@ -735,12 +953,13 @@
 
                 const title = document.createElement("div");
                 title.className = "task-title";
-                title.textContent = task.title || "Untitled task";
+                title.textContent = event.title;
 
                 const date = document.createElement("div");
                 date.className = "task-date";
                 date.textContent =
-                    task.completionDate.toLocaleString();
+                    `${event.date.toLocaleString()} · ` +
+                    (event.source === "group" ? event.groupName : "Personal task");
 
                 content.append(title, date);
                 card.append(check, content);
@@ -748,30 +967,67 @@
             }
         }
 
+        const AI_HINTS = {
+            unreachable: "Ollama is not reachable. Start it (ollama serve). If this site is hosted online, set OLLAMA_ORIGINS to your site URL.",
+            no_models: "Ollama is running but has no chat model. Run: ollama pull qwen2.5:3b",
+            timeout: "Ollama took too long (the model may still be loading). Press Refresh to try again.",
+            bad_response: "The AI gave an unusable answer, so the rule-based pick is shown.",
+            failed: "The AI request failed, so the rule-based pick is shown."
+        };
+
+        let priorityRun = 0;
+
         async function loadPriority(user) {
+            const run = ++priorityRun;
+
+            if (refreshPriorityButton) refreshPriorityButton.disabled = true;
+            prioritySource.textContent = "Thinking...";
+            priorityMessage.textContent = "Checking your tasks and assignments...";
+            priorityTask.textContent = "";
+            priorityHint.textContent = "";
+
             try {
-                const tasks = await listPersonalTasks(user.uid);
-                const recommendation = await recommendNextTask(tasks);
+                // Open personal tasks + open assignments from joined groups.
+                const { items, partial } = await loadOpenWork(user);
+                const recommendation = await recommendNextTask(items);
+
+                if (run !== priorityRun) return;
 
                 prioritySource.textContent = recommendation.source === "ai"
-                    ? "AI (Ollama)"
+                    ? `AI · ${recommendation.model}`
                     : "Rule-based fallback";
 
                 priorityMessage.textContent = recommendation.reason;
 
+                const hints = [];
+                if (recommendation.source !== "ai" && AI_HINTS[recommendation.aiStatus]) {
+                    hints.push(AI_HINTS[recommendation.aiStatus]);
+                }
+                if (partial) hints.push("Some group data could not be loaded.");
+                priorityHint.textContent = hints.join(" ");
+
                 if (!recommendation.taskId) {
-                    priorityTask.textContent = "No open personal tasks.";
+                    priorityTask.textContent = "No open tasks or assignments.";
                     return;
                 }
 
-                const task = tasks.find(item => item.id === recommendation.taskId);
-                priorityTask.textContent = task?.title || recommendation.taskId;
+                const task = items.find(item => item.id === recommendation.taskId);
+                priorityTask.textContent = task
+                    ? (task.source === "group"
+                        ? `${task.title} · ${task.groupName}`
+                        : task.title)
+                    : recommendation.taskId;
             } catch (error) {
+                if (run !== priorityRun) return;
                 console.error("Priority load failed:", error);
                 prioritySource.textContent = "Unavailable";
                 priorityMessage.textContent =
-                    "Could not load prioritization. Add personal tasks on the Progress page.";
+                    "Could not load prioritization. Add tasks on the Progress page and try again.";
                 priorityTask.textContent = "";
+            } finally {
+                if (run === priorityRun && refreshPriorityButton) {
+                    refreshPriorityButton.disabled = false;
+                }
             }
         }
 
@@ -781,19 +1037,18 @@
 
         async function loadActivity(user) {
             try {
-                const allTasks = await listPersonalTasks(user.uid);
-                const completedTasks = allTasks.filter(
-                    task => task.status === "completed"
-                );
+                const { events, partial } = await loadActivityEvents(user);
 
-                renderHeatmap(completedTasks);
-                renderRecentTasks(completedTasks);
+                renderHeatmap(events, partial);
+                renderRecentTasks(events);
             } catch (error) {
                 console.error("Activity loading failed:", error);
 
                 if (activityTotal) {
                     activityTotal.textContent = "Unavailable";
                 }
+
+                activityStats?.replaceChildren();
 
                 if (taskList) {
                     taskList.replaceChildren();

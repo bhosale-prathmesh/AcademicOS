@@ -87,27 +87,38 @@ export async function listJoinedGroups(user) {
     collection(db, "users", user.uid, "joinedGroups")
   );
 
-  const groups = [];
+  const groups = await Promise.all(
+    joinedSnapshot.docs.map(async joinedDoc => {
+      const groupId = joinedDoc.id;
+      const [groupSnapshot, memberSnapshot] = await Promise.all([
+        getDoc(doc(db, "groups", groupId)),
+        getDoc(doc(db, "groups", groupId, "members", user.uid))
+      ]);
 
-  for (const joinedDoc of joinedSnapshot.docs) {
-    const groupId = joinedDoc.id;
-    const groupSnapshot = await getDoc(doc(db, "groups", groupId));
-    if (!groupSnapshot.exists()) continue;
+      if (!groupSnapshot.exists()) return null;
 
-    const memberSnapshot = await getDoc(
-      doc(db, "groups", groupId, "members", user.uid)
-    );
+      return {
+        id: groupSnapshot.id,
+        ...groupSnapshot.data(),
+        myRole: memberSnapshot.exists()
+          ? memberSnapshot.data().role
+          : "student"
+      };
+    })
+  );
 
-    groups.push({
-      id: groupSnapshot.id,
-      ...groupSnapshot.data(),
-      myRole: memberSnapshot.exists()
-        ? memberSnapshot.data().role
-        : "student"
-    });
-  }
+  return groups.filter(Boolean);
+}
 
-  return groups;
+export async function listGroupMembers(groupId) {
+  const snapshot = await getDocs(
+    collection(db, "groups", groupId, "members")
+  );
+
+  return snapshot.docs.map(item => ({
+    uid: item.id,
+    ...item.data()
+  }));
 }
 
 export async function listCreatedGroups(user) {
