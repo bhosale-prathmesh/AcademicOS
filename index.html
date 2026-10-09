@@ -7,13 +7,13 @@
     <meta name="theme-color" content="#FFFFFF">
     <title>AcademicOS</title>
 
-    <!-- Font Awesome 6 icons (requires internet access) -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
-        referrerpolicy="no-referrer">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <style>
         :root {
-            /* Theme tokens: change these to re-theme the whole app */
             --background: #F4F6F9;
             --surface: #FFFFFF;
             --text: #14213D;
@@ -25,7 +25,6 @@
             --primary-soft: rgba(14, 124, 123, 0.10);
             --bar-bg: rgba(255, 255, 255, 0.94);
             --shadow: 0 1px 2px rgba(20, 33, 61, 0.05), 0 4px 14px rgba(20, 33, 61, 0.04);
-
             --topbar-h: 64px;
             --sidebar-w: 96px;
             --content-max: 1000px;
@@ -47,9 +46,14 @@
             min-height: 100dvh;
             background: var(--background);
             color: var(--text);
-            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
-                "Segoe UI", Roboto, sans-serif;
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system,
+                BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             overflow-x: hidden;
+        }
+
+        /* Hide protected content until Firebase confirms authentication. */
+        body.auth-pending {
+            visibility: hidden;
         }
 
         button,
@@ -61,7 +65,6 @@
             color: inherit;
         }
 
-        /* ---------- Top bar ---------- */
         .topbar {
             position: fixed;
             z-index: 30;
@@ -97,7 +100,7 @@
             height: 34px;
             flex: 0 0 34px;
             border-radius: 11px;
-            color: #fff;
+            color: #FFFFFF;
             background: var(--primary);
             font-size: 1rem;
         }
@@ -106,46 +109,40 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 9px;
-            min-height: 42px;
-            padding: 6px 9px;
+            min-width: 44px;
+            min-height: 44px;
+            padding: 3px;
             border: 1px solid var(--border);
-            border-radius: 13px;
+            border-radius: 50%;
             background: var(--surface);
             cursor: pointer;
-            transition: border-color 160ms ease;
+            transition: border-color 160ms ease, box-shadow 160ms ease;
         }
 
         .profile-button:hover {
             border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-soft);
         }
 
-        .profile-avatar {
+        .google-profile-photo {
+            display: block;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            object-fit: cover;
+            background: var(--primary-soft);
+        }
+
+        .profile-fallback {
             display: grid;
             place-items: center;
-            width: 27px;
-            height: 27px;
+            width: 36px;
+            height: 36px;
             border-radius: 50%;
-            background: var(--primary-soft);
             color: var(--primary-strong);
+            background: var(--primary-soft);
         }
 
-        .profile-label,
-        .profile-button .fa-chevron-down {
-            display: none;
-        }
-
-        .profile-label {
-            font-size: 0.9rem;
-            font-weight: 650;
-        }
-
-        .profile-button .fa-chevron-down {
-            color: var(--muted);
-            font-size: 0.7rem;
-        }
-
-        /* ---------- Main content ---------- */
         main {
             width: min(100% - 32px, var(--content-max));
             margin: 0 auto;
@@ -228,7 +225,6 @@
             line-height: 1.5;
         }
 
-        /* ---------- Navigation (bottom on mobile) ---------- */
         .app-nav {
             position: fixed;
             z-index: 20;
@@ -285,7 +281,6 @@
             outline-offset: 3px;
         }
 
-        /* ---------- Toast ---------- */
         .toast {
             position: fixed;
             z-index: 40;
@@ -307,7 +302,6 @@
             display: none !important;
         }
 
-        /* ---------- Tablet and desktop ---------- */
         @media (min-width: 640px) {
             .placeholder-grid {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -329,16 +323,6 @@
                 flex-basis: 36px;
             }
 
-            .profile-button {
-                padding: 7px 12px;
-            }
-
-            .profile-label,
-            .profile-button .fa-chevron-down {
-                display: inline;
-            }
-
-            /* Sidebar starts below the top bar so it never covers the brand */
             .app-nav {
                 inset: var(--topbar-h) auto 0 0;
                 width: var(--sidebar-w);
@@ -371,29 +355,39 @@
 
         @media (min-width: 1200px) {
             main {
-                margin-left: max(calc(var(--sidebar-w) + 32px), calc((100vw + var(--sidebar-w) - var(--content-max)) / 2));
+                margin-left: max(calc(var(--sidebar-w) + 32px),
+                        calc((100vw + var(--sidebar-w) - var(--content-max)) / 2));
             }
         }
 
         @media (prefers-reduced-motion: reduce) {
-            * {
+
+            *,
+            *::before,
+            *::after {
                 transition: none !important;
             }
         }
     </style>
 </head>
 
-<body>
+<body class="auth-pending">
+
     <header class="topbar">
-        <a class="brand" href="#home" aria-label="AcademicOS home" data-page="home">
-            <span class="brand-mark"><i class="fa-solid fa-layer-group" aria-hidden="true"></i></span>
+        <a class="brand" href="./index.html" aria-label="AcademicOS home">
+            <span class="brand-mark">
+                <i class="fa-solid fa-layer-group" aria-hidden="true"></i>
+            </span>
             <span>AcademicOS</span>
         </a>
 
-        <button class="profile-button" id="profileButton" type="button" aria-label="Open profile">
-            <span class="profile-avatar"><i class="fa-solid fa-user" aria-hidden="true"></i></span>
-            <span class="profile-label">Profile</span>
-            <i class="fa-solid fa-chevron-down" aria-hidden="true"></i>
+        <button class="profile-button" id="profileButton" type="button" aria-label="Open profile" title="Open profile"
+            hidden>
+            <img id="googleProfilePhoto" class="google-profile-photo" alt="Your Google profile photo"
+                referrerpolicy="no-referrer" hidden>
+            <span id="profileFallback" class="profile-fallback">
+                <i class="fa-solid fa-user" aria-hidden="true"></i>
+            </span>
         </button>
     </header>
 
@@ -402,20 +396,26 @@
             <p class="eyebrow">Your academic workspace</p>
             <h1 id="welcomeTitle">All your academic tasks.<br>One clear priority.</h1>
             <p class="intro">
-                Manage your academic groups, tasks, and progress in one place. Your personalized
-                dashboard will appear here.
+                Manage your academic groups, tasks, and progress in one place.
+                Your personalized dashboard will appear here.
             </p>
         </section>
 
         <h2 class="section-heading" id="sectionHeading">Your workspace</h2>
+
         <section class="placeholder-grid" aria-label="Workspace overview">
             <article class="placeholder-card">
-                <span class="placeholder-icon"><i class="fa-solid fa-list-check" aria-hidden="true"></i></span>
+                <span class="placeholder-icon">
+                    <i class="fa-solid fa-list-check" aria-hidden="true"></i>
+                </span>
                 <h3>Task priorities</h3>
                 <p>Your upcoming tasks and priorities will appear here.</p>
             </article>
+
             <article class="placeholder-card">
-                <span class="placeholder-icon"><i class="fa-solid fa-people-group" aria-hidden="true"></i></span>
+                <span class="placeholder-icon">
+                    <i class="fa-solid fa-people-group" aria-hidden="true"></i>
+                </span>
                 <h3>Your groups</h3>
                 <p>Access the academic groups you belong to.</p>
             </article>
@@ -424,16 +424,23 @@
 
     <nav class="app-nav" aria-label="Main navigation">
         <button class="nav-item active" type="button" data-page="home" aria-current="page">
-            <i class="fa-solid fa-house" aria-hidden="true"></i><span>Home</span>
+            <i class="fa-solid fa-house" aria-hidden="true"></i>
+            <span>Home</span>
         </button>
+
         <button class="nav-item" type="button" data-page="groups">
-            <i class="fa-solid fa-people-group" aria-hidden="true"></i><span>Groups</span>
+            <i class="fa-solid fa-people-group" aria-hidden="true"></i>
+            <span>Groups</span>
         </button>
+
         <button class="nav-item" type="button" data-page="progress">
-            <i class="fa-solid fa-chart-line" aria-hidden="true"></i><span>Progress</span>
+            <i class="fa-solid fa-chart-line" aria-hidden="true"></i>
+            <span>Progress</span>
         </button>
+
         <button class="nav-item" type="button" data-page="settings">
-            <i class="fa-solid fa-gear" aria-hidden="true"></i><span>Settings</span>
+            <i class="fa-solid fa-gear" aria-hidden="true"></i>
+            <span>Settings</span>
         </button>
     </nav>
 
@@ -441,20 +448,20 @@
 
     <script type="module">
         import { auth } from "./core/firebase-config.js";
-        import { onAuthStateChanged } from
-            "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
 
-        onAuthStateChanged(auth, (user) => {
-            if (!user) {
-                window.location.replace("./main/account.html");
-            }
-        });
+        import {
+            onAuthStateChanged
+        } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
 
-
+        const profileButton = document.getElementById("profileButton");
+        const profilePhoto = document.getElementById("googleProfilePhoto");
+        const profileFallback = document.getElementById("profileFallback");
         const toast = document.getElementById("toast");
         const sectionHeading = document.getElementById("sectionHeading");
         const navItems = document.querySelectorAll(".nav-item");
+
         let toastTimer;
+        let authResolved = false;
 
         const pageLabels = {
             home: "Your workspace",
@@ -467,17 +474,20 @@
             toast.textContent = message;
             toast.hidden = false;
             clearTimeout(toastTimer);
-            toastTimer = setTimeout(() => { toast.hidden = true; }, 2400);
+            toastTimer = setTimeout(() => {
+                toast.hidden = true;
+            }, 2400);
         }
 
         function navigateTo(page) {
-            navItems.forEach((navItem) => {
-                const isActive = navItem.dataset.page === page;
-                navItem.classList.toggle("active", isActive);
-                if (isActive) {
-                    navItem.setAttribute("aria-current", "page");
+            navItems.forEach((item) => {
+                const active = item.dataset.page === page;
+                item.classList.toggle("active", active);
+
+                if (active) {
+                    item.setAttribute("aria-current", "page");
                 } else {
-                    navItem.removeAttribute("aria-current");
+                    item.removeAttribute("aria-current");
                 }
             });
 
@@ -488,17 +498,56 @@
             }
         }
 
-        document.querySelectorAll("[data-page]").forEach((item) => {
-            item.addEventListener("click", (event) => {
-                if (item.tagName === "A") {
-                    event.preventDefault();
-                }
+        navItems.forEach((item) => {
+            item.addEventListener("click", () => {
                 navigateTo(item.dataset.page);
             });
         });
 
-        document.getElementById("profileButton").addEventListener("click", () => {
-            showToast("Profile menu will be available after sign-in is added.");
+        // One authentication listener: protect the page and load the Google photo.
+        onAuthStateChanged(
+            auth,
+            (user) => {
+                authResolved = true;
+
+                if (!user) {
+                    // No authenticated Firebase user: redirect to account page.
+                    window.location.replace("./main/account.html");
+                    return;
+                }
+
+                // User is signed in: reveal the protected dashboard.
+                document.body.classList.remove("auth-pending");
+                profileButton.hidden = false;
+
+                if (user.photoURL) {
+                    profilePhoto.onload = () => {
+                        profilePhoto.hidden = false;
+                        profileFallback.hidden = true;
+                    };
+
+                    profilePhoto.onerror = () => {
+                        profilePhoto.hidden = true;
+                        profileFallback.hidden = false;
+                    };
+
+                    profilePhoto.src = user.photoURL;
+                } else {
+                    profilePhoto.hidden = true;
+                    profileFallback.hidden = false;
+                }
+            },
+            (error) => {
+                console.error("Firebase authentication check failed:", error);
+
+                // Fail closed: do not show the protected dashboard if auth cannot be checked.
+                window.location.replace("./main/account.html");
+            }
+        );
+
+        // Only one profile click handler.
+        profileButton.addEventListener("click", () => {
+            window.location.href = "./main/profile.html";
         });
     </script>
 </body>

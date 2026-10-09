@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#F4F6F9">
+    <title>My Profile | AcademicOS</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --background: #F4F6F9;
+            --surface: #FFFFFF;
+            --text: #14213D;
+            --muted: #5B6577;
+            --border: #D9DFE8;
+            --primary: #0E7C7B;
+            --primary-strong: #0A5F5E;
+            --primary-soft: rgba(14, 124, 123, 0.10);
+            --danger: #C62828;
+            --danger-soft: #FEF2F2;
+            --shadow: 0 4px 18px rgba(20, 33, 61, 0.05);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html {
+            -webkit-text-size-adjust: 100%;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            min-height: 100dvh;
+            background: var(--background);
+            color: var(--text);
+            font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+        }
+
+        body.auth-pending {
+            visibility: hidden;
+        }
+
+        button,
+        input {
+            font: inherit;
+        }
+
+        button {
+            cursor: pointer;
+        }
+
+        button:focus-visible,
+        input:focus-visible,
+        a:focus-visible {
+            outline: 3px solid var(--primary);
+            outline-offset: 3px;
+        }
+
+        [hidden] {
+            display: none !important;
+        }
+
+        .topbar {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            height: 68px;
+            padding: 0 max(18px, env(safe-area-inset-right)) 0 max(18px, env(safe-area-inset-left));
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            background: rgba(255, 255, 255, 0.95);
+            border-bottom: 1px solid var(--border);
+            backdrop-filter: blur(12px);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text);
+            text-decoration: none;
+            font-size: 19px;
+            font-weight: 800;
+            letter-spacing: -0.7px;
+        }
+
+        .brand-mark {
+            width: 35px;
+            height: 35px;
+            display: grid;
+            place-items: center;
+            border-radius: 11px;
+            background: var(--primary);
+            color: white;
+            font-size: 17px;
+        }
+
+        .back-link {
+            color: var(--primary-strong);
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 700;
+            padding: 10px 12px;
+            border-radius: 9px;
+        }
+
+        .back-link:hover {
+            background: var(--primary-soft);
+        }
+
+        main {
+            width: min(100% - 30px, 650px);
+            margin: 0 auto;
+            padding: 32px 0 48px;
+        }
+
+        .page-heading {
+            margin-bottom: 22px;
+        }
+
+        .page-heading h1 {
+            margin: 0 0 8px;
+            font-size: clamp(25px, 5vw, 32px);
+            letter-spacing: -1px;
+        }
+
+        .page-heading p {
+            margin: 0;
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .card {
+            padding: clamp(20px, 5vw, 30px);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            background: var(--surface);
+            box-shadow: var(--shadow);
+            margin-bottom: 18px;
+        }
+
+        .identity {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            padding-bottom: 25px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 24px;
+        }
+
+        .avatar-wrap {
+            width: 112px;
+            height: 112px;
+            border: 4px solid white;
+            border-radius: 50%;
+            box-shadow: 0 0 0 2px var(--border);
+            background: var(--primary-soft);
+            overflow: hidden;
+            display: grid;
+            place-items: center;
+            margin-bottom: 16px;
+        }
+
+        .avatar {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .avatar-fallback {
+            color: var(--primary-strong);
+            font-size: 44px;
+            font-weight: 800;
+        }
+
+        .identity h2 {
+            margin: 0;
+            font-size: 21px;
+            overflow-wrap: anywhere;
+        }
+
+        .identity .email {
+            margin-top: 7px;
+            color: var(--muted);
+            font-size: 13px;
+            overflow-wrap: anywhere;
+        }
+
+        .account-tag {
+            display: inline-flex;
+            margin-top: 12px;
+            padding: 6px 10px;
+            border-radius: 30px;
+            background: var(--primary-soft);
+            color: var(--primary-strong);
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .section-title {
+            margin: 0 0 7px;
+            font-size: 17px;
+        }
+
+        .section-description {
+            margin: 0 0 22px;
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .field {
+            margin-bottom: 17px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        input {
+            width: 100%;
+            min-width: 0;
+            height: 47px;
+            padding: 0 13px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text);
+            background: white;
+            outline: none;
+            font-size: 14px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(14, 124, 123, 0.10);
+        }
+
+        .readonly {
+            background: #F1F4F8;
+            color: var(--muted);
+            cursor: not-allowed;
+        }
+
+        .readonly-note {
+            margin-top: 6px;
+            color: var(--muted);
+            font-size: 11px;
+            line-height: 1.5;
+        }
+
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 24px;
+        }
+
+        .btn {
+            min-height: 45px;
+            padding: 12px 17px;
+            border: 1px solid transparent;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 700;
+            transition: 0.2s ease;
+        }
+
+        .btn-primary {
+            flex: 1;
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: var(--primary-strong);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: var(--text);
+            border-color: var(--border);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: #F7F9FC;
+        }
+
+        .btn-danger {
+            width: 100%;
+            background: white;
+            color: var(--danger);
+            border-color: #F1CACA;
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            background: var(--danger-soft);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: wait;
+        }
+
+        .status {
+            display: none;
+            padding: 12px 13px;
+            margin-top: 16px;
+            border-radius: 10px;
+            font-size: 12px;
+            line-height: 1.6;
+            overflow-wrap: anywhere;
+        }
+
+        .status.show {
+            display: block;
+        }
+
+        .status.success {
+            background: var(--primary-soft);
+            color: var(--primary-strong);
+        }
+
+        .status.error {
+            background: var(--danger-soft);
+            color: var(--danger);
+        }
+
+        .account-info {
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.7;
+            margin-top: 12px;
+        }
+
+        @media (max-width: 420px) {
+            .topbar {
+                height: 62px;
+            }
+
+            main {
+                padding-top: 24px;
+            }
+
+            .avatar-wrap {
+                width: 100px;
+                height: 100px;
+            }
+
+            .actions .btn {
+                width: 100%;
+                flex: auto;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+
+            *,
+            *::before,
+            *::after {
+                transition: none !important;
+            }
+        }
+    </style>
+</head>
+
+<body class="auth-pending">
+    <header class="topbar">
+        <a class="brand" href="../index.html">
+            <span class="brand-mark">A</span>
+            <span>AcademicOS</span>
+        </a>
+
+        <a class="back-link" href="../index.html">
+            ← Dashboard
+        </a>
+    </header>
+
+    <main>
+        <div class="page-heading">
+            <h1>My Profile</h1>
+            <p>Manage your personal and academic information.</p>
+        </div>
+
+        <section class="card">
+            <div class="identity">
+                <div class="avatar-wrap">
+                    <img id="avatar" class="avatar" alt="Your Google profile photo" hidden>
+                    <span id="avatarFallback" class="avatar-fallback">A</span>
+                </div>
+
+                <h2 id="displayName">Loading profile...</h2>
+                <p class="email" id="displayEmail"></p>
+                <span class="account-tag">AcademicOS Student</span>
+            </div>
+
+            <h3 class="section-title">Student details</h3>
+            <p class="section-description">
+                Edit your details and save your changes to update your profile.
+            </p>
+
+            <form id="profileForm">
+                <div class="field">
+                    <label for="name">Full name</label>
+                    <input id="name" type="text" maxlength="100" required>
+                </div>
+
+                <div class="field">
+                    <label for="age">Age</label>
+                    <input id="age" type="number" min="13" max="100" inputmode="numeric" required>
+                </div>
+
+                <div class="field">
+                    <label for="collegeName">College name</label>
+                    <input id="collegeName" type="text" maxlength="150" required>
+                </div>
+
+                <div class="field">
+                    <label for="year">Academic year</label>
+                    <input id="year" type="text" maxlength="50" required>
+                </div>
+
+                <div class="field">
+                    <label for="branch">Branch</label>
+                    <input id="branch" type="text" maxlength="100" required>
+                </div>
+
+                <div class="field">
+                    <label for="email">Google email</label>
+                    <input id="email" class="readonly" type="email" readonly>
+                    <p class="readonly-note">Email is managed by your Google account.</p>
+                </div>
+
+                <div class="field">
+                    <label for="uid">Firebase UID</label>
+                    <input id="uid" class="readonly" type="text" readonly>
+                    <p class="readonly-note">Your unique account identifier cannot be edited.</p>
+                </div>
+
+                <div class="actions">
+                    <button class="btn btn-primary" id="saveButton" type="submit">
+                        Save Changes
+                    </button>
+                    <button class="btn btn-secondary" id="resetButton" type="button">
+                        Reset
+                    </button>
+                </div>
+
+                <div class="status" id="saveStatus" role="status" aria-live="polite"></div>
+            </form>
+        </section>
+
+        <section class="card">
+            <h3 class="section-title">Account session</h3>
+            <p class="section-description">
+                Log out to end your current AcademicOS session on this device.
+            </p>
+
+            <button class="btn btn-danger" id="logoutButton" type="button">
+                Log Out
+            </button>
+
+            <p class="account-info">
+                Logging out does not delete your profile or academic data.
+            </p>
+
+            <div class="status" id="logoutStatus" role="status" aria-live="polite"></div>
+        </section>
+    </main>
+
+    <script type="module">
+        import { auth, db } from "../core/firebase-config.js";
+
+        import {
+            onAuthStateChanged,
+            signOut
+        } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+
+        import {
+            doc,
+            getDoc,
+            updateDoc
+        } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+
+        const form = document.getElementById("profileForm");
+        const saveButton = document.getElementById("saveButton");
+        const resetButton = document.getElementById("resetButton");
+        const logoutButton = document.getElementById("logoutButton");
+        const saveStatus = document.getElementById("saveStatus");
+        const logoutStatus = document.getElementById("logoutStatus");
+
+        const avatar = document.getElementById("avatar");
+        const avatarFallback = document.getElementById("avatarFallback");
+        const displayName = document.getElementById("displayName");
+        const displayEmail = document.getElementById("displayEmail");
+
+        let currentUser = null;
+        let originalProfile = null;
+        let isSaving = false;
+        let isLoggingOut = false;
+
+        function showStatus(element, message, type) {
+            element.textContent = message;
+            element.className = `status show ${type}`;
+        }
+
+        function getFormProfile() {
+            return {
+                name: document.getElementById("name").value.trim(),
+                age: Number(document.getElementById("age").value),
+                collegeName: document.getElementById("collegeName").value.trim(),
+                year: document.getElementById("year").value.trim(),
+                branch: document.getElementById("branch").value.trim()
+            };
+        }
+
+        function fillForm(profile) {
+            document.getElementById("name").value = profile.name || "";
+            document.getElementById("age").value = profile.age ?? "";
+            document.getElementById("collegeName").value = profile.collegeName || "";
+            document.getElementById("year").value = profile.year || "";
+            document.getElementById("branch").value = profile.branch || "";
+            document.getElementById("email").value = currentUser.email || "";
+            document.getElementById("uid").value = currentUser.uid;
+
+            displayName.textContent = profile.name || currentUser.displayName || "Student";
+            displayEmail.textContent = currentUser.email || "";
+
+            originalProfile = {
+                name: profile.name || "",
+                age: profile.age ?? "",
+                collegeName: profile.collegeName || "",
+                year: profile.year || "",
+                branch: profile.branch || ""
+            };
+        }
+
+        function setAvatar(photoURL) {
+            if (!photoURL) {
+                avatar.hidden = true;
+                avatarFallback.hidden = false;
+                return;
+            }
+
+            avatar.onload = () => {
+                avatar.hidden = false;
+                avatarFallback.hidden = true;
+            };
+
+            avatar.onerror = () => {
+                avatar.hidden = true;
+                avatarFallback.hidden = false;
+            };
+
+            avatar.src = photoURL;
+        }
+
+        function validateProfile(profile) {
+            if (
+                !profile.name ||
+                !profile.collegeName ||
+                !profile.year ||
+                !profile.branch
+            ) {
+                return "Please complete all student detail fields.";
+            }
+
+            if (
+                !Number.isInteger(profile.age) ||
+                profile.age < 13 ||
+                profile.age > 100
+            ) {
+                return "Please enter a valid age between 13 and 100.";
+            }
+
+            return null;
+        }
+
+        async function loadProfile(user) {
+            currentUser = user;
+
+            const profileRef = doc(db, "users", user.uid);
+            const snapshot = await getDoc(profileRef);
+
+            if (!snapshot.exists()) {
+                // Authenticated Google account but no AcademicOS profile.
+                await signOut(auth);
+                window.location.replace("./account.html");
+                return;
+            }
+
+            const profile = snapshot.data();
+
+            fillForm(profile);
+            setAvatar(user.photoURL);
+            document.body.classList.remove("auth-pending");
+        }
+
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) {
+                window.location.replace("./account.html");
+                return;
+            }
+
+            try {
+                await loadProfile(user);
+            } catch (error) {
+                console.error("Could not load profile:", error);
+                document.body.classList.remove("auth-pending");
+                showStatus(
+                    saveStatus,
+                    "Could not load your profile. Check your Firestore Rules and connection, then reload.",
+                    "error"
+                );
+                form.hidden = true;
+            }
+        });
+
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+
+            if (!currentUser || isSaving) return;
+            if (!form.reportValidity()) return;
+
+            const profile = getFormProfile();
+            const validationError = validateProfile(profile);
+
+            if (validationError) {
+                showStatus(saveStatus, validationError, "error");
+                return;
+            }
+
+            isSaving = true;
+            saveButton.disabled = true;
+            resetButton.disabled = true;
+            showStatus(saveStatus, "Saving your changes...", "success");
+
+            try {
+                // Only update the authenticated user's own profile.
+                const profileRef = doc(db, "users", currentUser.uid);
+
+                await updateDoc(profileRef, {
+                    name: profile.name,
+                    age: profile.age,
+                    collegeName: profile.collegeName,
+                    year: profile.year,
+                    branch: profile.branch
+                });
+
+                fillForm(profile);
+                showStatus(saveStatus, "Profile updated successfully.", "success");
+            } catch (error) {
+                console.error("Profile update failed:", error);
+
+                if (error.code === "permission-denied") {
+                    showStatus(
+                        saveStatus,
+                        "Firestore denied this update. Your security rules may currently block profile edits.",
+                        "error"
+                    );
+                } else {
+                    showStatus(
+                        saveStatus,
+                        error.message || "Could not save your changes. Please try again.",
+                        "error"
+                    );
+                }
+            } finally {
+                isSaving = false;
+                saveButton.disabled = false;
+                resetButton.disabled = false;
+            }
+        });
+
+        resetButton.addEventListener("click", () => {
+            if (!originalProfile || isSaving) return;
+
+            fillForm(originalProfile);
+            showStatus(saveStatus, "Unsaved changes have been reset.", "success");
+        });
+
+        logoutButton.addEventListener("click", async () => {
+            if (isLoggingOut) return;
+
+            isLoggingOut = true;
+            logoutButton.disabled = true;
+            logoutButton.textContent = "Logging out...";
+
+            try {
+                await signOut(auth);
+                window.location.replace("./account.html");
+            } catch (error) {
+                console.error("Logout failed:", error);
+                showStatus(
+                    logoutStatus,
+                    "Logout failed. Please try again.",
+                    "error"
+                );
+                isLoggingOut = false;
+                logoutButton.disabled = false;
+                logoutButton.textContent = "Log Out";
+            }
+        });
+    </script>
+</body>
+
+</html>
