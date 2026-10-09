@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings | AcademicOS</title>
+    <style>
+        :root {
+            --bg: #F4F6F9;
+            --surface: #FFFFFF;
+            --text: #14213D;
+            --muted: #64748B;
+            --border: #D9DFE8;
+            --primary: #0E7C7B;
+            --primary-dark: #0A5F5E;
+            --danger: #C62828;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: Inter, system-ui, Arial, sans-serif;
+        }
+
+        main {
+            max-width: 640px;
+            margin: auto;
+            padding: 28px 20px 50px;
+        }
+
+        h1 {
+            margin: 0 0 8px;
+            font-size: clamp(26px, 4vw, 32px);
+        }
+
+        .subtitle {
+            margin: 0 0 28px;
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+            margin-bottom: 18px;
+        }
+
+        .row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            padding: 16px 18px;
+            border-bottom: 1px solid var(--border);
+            text-decoration: none;
+            color: inherit;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .row:last-child {
+            border-bottom: 0;
+        }
+
+        a.row:hover {
+            background: #F8FAFC;
+        }
+
+        button.row {
+            width: 100%;
+            border: 0;
+            background: white;
+            cursor: pointer;
+            text-align: left;
+            font: inherit;
+        }
+
+        button.row.danger {
+            color: var(--danger);
+        }
+
+        .row-meta {
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .chevron {
+            color: var(--muted);
+            font-size: 18px;
+        }
+
+        .status {
+            margin-top: 12px;
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        .status.error {
+            color: var(--danger);
+        }
+    </style>
+</head>
+
+<body>
+    <main>
+        <h1>Settings</h1>
+        <p class="subtitle">Manage your account and app preferences.</p>
+
+        <section class="panel" aria-label="Account">
+            <a class="row" href="./profile.html" target="_top">
+                <span>Edit profile</span>
+                <span class="chevron" aria-hidden="true">›</span>
+            </a>
+            <a class="row" href="../index.html" target="_top">
+                <span>Back to dashboard</span>
+                <span class="chevron" aria-hidden="true">›</span>
+            </a>
+        </section>
+
+        <section class="panel" aria-label="About">
+            <div class="row">
+                <span>App</span>
+                <span class="row-meta">AcademicOS</span>
+            </div>
+            <div class="row">
+                <span>Version</span>
+                <span class="row-meta">1.0</span>
+            </div>
+        </section>
+
+        <section class="panel" aria-label="Session">
+            <button class="row danger" id="logoutButton" type="button">
+                Log out of this device
+            </button>
+        </section>
+
+        <p id="status" class="status" role="status"></p>
+    </main>
+
+    <script type="module">
+        import { auth } from "../core/firebase-config.js";
+        import {
+            onAuthStateChanged,
+            signOut
+        } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+
+        const logoutButton = document.getElementById("logoutButton");
+        const status = document.getElementById("status");
+
+        onAuthStateChanged(auth, user => {
+            if (!user) {
+                window.location.replace("./account.html");
+            }
+        });
+
+        logoutButton.addEventListener("click", async () => {
+            logoutButton.disabled = true;
+            status.textContent = "Signing out...";
+            status.className = "status";
+
+            try {
+                await signOut(auth);
+                window.location.replace("./account.html");
+            } catch (error) {
+                console.error("Logout failed:", error);
+                status.textContent = "Could not log out. Try again.";
+                status.className = "status error";
+                logoutButton.disabled = false;
+            }
+        });
+    </script>
+</body>
+
+</html>

@@ -452,6 +452,19 @@
             <p>Track your consistency and celebrate your progress.</p>
         </header>
 
+        <section class="panel" id="priorityPanel">
+            <div class="panel-heading">
+                <h2>What to do next</h2>
+                <span id="prioritySource" class="count">Checking...</span>
+            </div>
+            <p id="priorityMessage" style="margin:0;font-size:14px;color:var(--muted);">
+                Loading task recommendation...
+            </p>
+            <p id="priorityTask" style="margin:12px 0 0;font-size:15px;font-weight:700;"></p>
+            <button type="button" id="refreshPriorityButton" class="action-button primary"
+                style="margin-top:14px;">Refresh recommendation</button>
+        </section>
+
         <!-- Activity heatmap -->
         <section class="panel">
             <div class="panel-heading">
@@ -480,7 +493,7 @@
                 <div>
                     <h2>Your Groups</h2>
                     <p style="margin:7px 0 0;font-size:13px">
-                        Academic groups you manage as an admin.
+                        Groups you created. Share the Group ID so students can join from the Groups tab.
                     </p>
                 </div>
                 <span id="groupCount" class="count">0 groups</span>
@@ -545,20 +558,15 @@
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
     <script type="module">
-        import { auth, db } from "../core/firebase-config.js";
-
+        import { auth } from "../core/firebase-config.js";
         import { onAuthStateChanged } from
             "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
-
-        import {
-            collection,
-            query,
-            where,
-            getDocs,
-            doc,
-            writeBatch,
-            serverTimestamp
-        } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+        import { createGroup, listCreatedGroups } from "../engine/groupEngine.js";
+        import { listPersonalTasks } from "../engine/taskEngine.js";
+        import { dateKey, toDate } from "../engine/dataEngine.js";
+        import { recommendNextTask } from "../AIservice/priorityEngine.js";
+        import { groupPageUrl } from "./navigation.js";
+        import { showToast } from "../engine/uiEngine.js";
 
         const $ = (id) => document.getElementById(id);
 
@@ -579,43 +587,20 @@
         const saveGroupButton = $("saveGroupButton");
         const formMessage = $("formMessage");
         const toast = $("toast");
+        const prioritySource = $("prioritySource");
+        const priorityMessage = $("priorityMessage");
+        const priorityTask = $("priorityTask");
+        const refreshPriorityButton = $("refreshPriorityButton");
 
         let currentUser = null;
         let toastTimer = null;
 
-        // ---------------- UTILITIES ----------------
-
-        function dateKey(date) {
-            const y = date.getFullYear();
-            const m = String(date.getMonth() + 1).padStart(2, "0");
-            const d = String(date.getDate()).padStart(2, "0");
-            return `${y}-${m}-${d}`;
-        }
-
-        function toDate(value) {
-            if (!value) return null;
-
-            if (typeof value.toDate === "function") {
-                return value.toDate();
-            }
-
-            const result = new Date(value);
-            return Number.isNaN(result.getTime()) ? null : result;
-        }
-
-        function showToast(message) {
-            if (!toast) {
-                console.log(message);
-                return;
-            }
-
+        function showLocalToast(message) {
+            if (!toast) return;
             toast.textContent = message;
             toast.hidden = false;
-
             clearTimeout(toastTimer);
-            toastTimer = setTimeout(() => {
-                toast.hidden = true;
-            }, 3000);
+            toastTimer = setTimeout(() => { toast.hidden = true; }, 3000);
         }
 
         function showFormMessage(message, type = "") {
@@ -763,17 +748,43 @@
             }
         }
 
+        async function loadPriority(user) {
+            try {
+                const tasks = await listPersonalTasks(user.uid);
+                const recommendation = await recommendNextTask(tasks);
+
+                prioritySource.textContent = recommendation.source === "ai"
+                    ? "AI (Ollama)"
+                    : "Rule-based fallback";
+
+                priorityMessage.textContent = recommendation.reason;
+
+                if (!recommendation.taskId) {
+                    priorityTask.textContent = "No open personal tasks.";
+                    return;
+                }
+
+                const task = tasks.find(item => item.id === recommendation.taskId);
+                priorityTask.textContent = task?.title || recommendation.taskId;
+            } catch (error) {
+                console.error("Priority load failed:", error);
+                prioritySource.textContent = "Unavailable";
+                priorityMessage.textContent =
+                    "Could not load prioritization. Add personal tasks on the Progress page.";
+                priorityTask.textContent = "";
+            }
+        }
+
+        refreshPriorityButton?.addEventListener("click", () => {
+            if (currentUser) loadPriority(currentUser);
+        });
+
         async function loadActivity(user) {
             try {
-                const tasksRef = collection(
-                    db, "users", user.uid, "personalTasks"
+                const allTasks = await listPersonalTasks(user.uid);
+                const completedTasks = allTasks.filter(
+                    task => task.status === "completed"
                 );
-
-                const snapshot = await getDocs(tasksRef);
-
-                const completedTasks = snapshot.docs
-                    .map(item => item.data())
-                    .filter(task => task.status === "completed");
 
                 renderHeatmap(completedTasks);
                 renderRecentTasks(completedTasks);
@@ -818,8 +829,7 @@
                 // Full-page navigation, including when home is inside an iframe.
                 const card = document.createElement("a");
                 card.className = "group-card";
-                card.href =
-                    `../main/group.html?groupId=${encodeURIComponent(group.id)}`;
+                card.href = groupPageUrl(group.id);
                 card.target = "_top";
                 card.style.display = "block";
                 card.style.color = "inherit";
@@ -857,22 +867,11 @@
             }
         }
 
-        async function loadAdminGroups(user) {
+        async function loadCreatedGroupsForDashboard(user) {
             showGroupMessage("Loading your groups...");
 
             try {
-                const groupsQuery = query(
-                    collection(db, "groups"),
-                    where("createdBy", "==", user.uid)
-                );
-
-                const snapshot = await getDocs(groupsQuery);
-
-                const groups = snapshot.docs.map(item => ({
-                    id: item.id,
-                    ...item.data()
-                }));
-
+                const groups = await listCreatedGroups(user);
                 renderGroups(groups);
             } catch (error) {
                 console.error("Group loading failed:", error);
@@ -950,38 +949,14 @@
             showFormMessage("");
 
             try {
-                const groupRef = doc(collection(db, "groups"));
-
-                const memberRef = doc(
-                    db,
-                    "groups",
-                    groupRef.id,
-                    "members",
-                    user.uid
-                );
-
-                const batch = writeBatch(db);
-
-                batch.set(groupRef, {
-                    name,
-                    description,
-                    createdBy: user.uid,
-                    createdAt: serverTimestamp()
-                });
-
-                batch.set(memberRef, {
-                    uid: user.uid,
-                    role: "admin",
-                    joinedAt: serverTimestamp()
-                });
-
-                await batch.commit();
+                const newGroupId = await createGroup(user, name, description);
 
                 groupModal.hidden = true;
                 createGroupForm.reset();
 
-                await loadAdminGroups(user);
-                showToast("Group created successfully!");
+                await loadCreatedGroupsForDashboard(user);
+                showLocalToast("Group created successfully!");
+                showToast(`Group created. ID: ${newGroupId.slice(0, 8)}…`, "success");
             } catch (error) {
                 console.error("Group creation failed:", error);
 
@@ -1016,7 +991,8 @@
 
                 await Promise.all([
                     loadActivity(user),
-                    loadAdminGroups(user)
+                    loadCreatedGroupsForDashboard(user),
+                    loadPriority(user)
                 ]);
             },
             error => {

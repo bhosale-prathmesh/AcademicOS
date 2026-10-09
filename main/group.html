@@ -15,6 +15,8 @@
             --border: #D9DFE8;
             --primary: #0E7C7B;
             --soft: #E5F4F3;
+            --green: #167347;
+            --orange: #9A3412;
         }
 
         * {
@@ -31,8 +33,7 @@
 
         button,
         input,
-        textarea,
-        select {
+        textarea {
             font: inherit;
         }
 
@@ -101,8 +102,7 @@
         }
 
         input,
-        textarea,
-        select {
+        textarea {
             display: block;
             width: 100%;
             padding: 12px;
@@ -118,8 +118,7 @@
         }
 
         input:focus,
-        textarea:focus,
-        select:focus {
+        textarea:focus {
             outline: 2px solid var(--soft);
             border-color: var(--primary);
         }
@@ -139,6 +138,22 @@
             cursor: not-allowed;
         }
 
+        .secondary-button {
+            padding: 8px 14px;
+            border: 1px solid var(--border);
+            border-radius: 9px;
+            background: white;
+            color: var(--text);
+            font-size: 13px;
+            font-weight: 650;
+        }
+
+        .secondary-button.done {
+            border-color: #86EFAC;
+            background: #DCFCE7;
+            color: var(--green);
+        }
+
         .task-list {
             display: grid;
             gap: 12px;
@@ -150,6 +165,13 @@
             border: 1px solid var(--border);
             border-radius: 11px;
             background: white;
+        }
+
+        .task-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
         }
 
         .task-card h3 {
@@ -164,20 +186,19 @@
             overflow-wrap: anywhere;
         }
 
-        .task-meta {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-top: 12px;
-        }
-
         .badge {
+            flex-shrink: 0;
             padding: 5px 9px;
             border-radius: 20px;
-            background: var(--soft);
-            color: var(--primary);
+            background: #FFEDD5;
+            color: var(--orange);
             font-size: 11px;
             font-weight: 700;
+        }
+
+        .badge.completed {
+            background: #DCFCE7;
+            color: var(--green);
         }
 
         .message {
@@ -197,6 +218,41 @@
 
         .success {
             color: #167347;
+        }
+
+        .progress-table-wrap {
+            overflow-x: auto;
+            margin-top: 16px;
+        }
+
+        table.progress-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .progress-table th,
+        .progress-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border);
+            text-align: left;
+        }
+
+        .progress-table th {
+            color: var(--muted);
+            font-weight: 650;
+        }
+
+        .dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #FDBA74;
+        }
+
+        .dot.done {
+            background: #22C55E;
         }
 
         @media (max-width: 600px) {
@@ -228,7 +284,7 @@
 
         <section class="panel" id="createTaskPanel" hidden>
             <h2>Create an assignment</h2>
-            <p>Assign academic work to members of this group.</p>
+            <p>Assign work to everyone in this group. Members mark assignments complete on their own account.</p>
 
             <form id="taskForm">
                 <div class="field">
@@ -239,7 +295,7 @@
                 <div class="field">
                     <label for="taskDescription">Instructions</label>
                     <textarea id="taskDescription" maxlength="2000"
-                        placeholder="Explain what students need to do"></textarea>
+                        placeholder="Explain what members need to do"></textarea>
                 </div>
 
                 <div class="field">
@@ -257,9 +313,17 @@
 
         <section class="panel">
             <h2>Group assignments</h2>
-            <p>Tasks assigned to this group.</p>
+            <p>Mark your work complete when you finish. Admins can review member progress below.</p>
             <div id="taskList" class="task-list">
                 <div class="message">Loading assignments...</div>
+            </div>
+        </section>
+
+        <section class="panel" id="memberProgressPanel" hidden>
+            <h2>Member progress</h2>
+            <p>Completion status for each member on every assignment.</p>
+            <div id="memberProgress" class="progress-table-wrap">
+                <div class="message">Loading member progress...</div>
             </div>
         </section>
     </main>
@@ -279,10 +343,10 @@
             query,
             orderBy,
             limit,
-            where,
             writeBatch,
             serverTimestamp,
-            Timestamp
+            Timestamp,
+            setDoc
         } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
 
         const $ = id => document.getElementById(id);
@@ -295,6 +359,8 @@
         const groupIdLabel = $("groupIdLabel");
         const roleMessage = $("roleMessage");
         const createTaskPanel = $("createTaskPanel");
+        const memberProgressPanel = $("memberProgressPanel");
+        const memberProgress = $("memberProgress");
         const taskForm = $("taskForm");
         const taskTitle = $("taskTitle");
         const taskDescription = $("taskDescription");
@@ -305,6 +371,18 @@
 
         let currentUser = null;
         let currentRole = null;
+        let cachedTasks = [];
+        let cachedMembers = [];
+
+        function normalizeRole(role) {
+            if (role === "teacher") return "admin";
+            if (role === "student") return "member";
+            return role === "admin" ? "admin" : "member";
+        }
+
+        function isAdmin() {
+            return normalizeRole(currentRole) === "admin";
+        }
 
         function showNotice(message, type = "") {
             notice.textContent = message;
@@ -331,119 +409,245 @@
                 : date.toLocaleString();
         }
 
-        async function loadGroup(user) {
-            if (!groupId) {
-                groupName.textContent = "Group not selected";
-                groupDescription.textContent =
-                    "Open a group from the Home page.";
-                createTaskPanel.hidden = true;
-                showTaskMessage("A group ID is required.");
+        async function fetchMemberProfiles(members) {
+            const profiles = new Map();
+
+            await Promise.all(members.map(async member => {
+                try {
+                    const snap = await getDoc(doc(db, "users", member.uid));
+                    profiles.set(member.uid, snap.exists()
+                        ? (snap.data().name || member.uid.slice(0, 8))
+                        : member.uid.slice(0, 8));
+                } catch {
+                    profiles.set(member.uid, member.uid.slice(0, 8));
+                }
+            }));
+
+            return profiles;
+        }
+
+        async function loadCompletionsForTask(taskId) {
+            const snap = await getDocs(
+                collection(db, "groups", groupId, "tasks", taskId, "completions")
+            );
+
+            const map = new Map();
+            for (const item of snap.docs) {
+                map.set(item.id, item.data());
+            }
+            return map;
+        }
+
+        async function toggleMyCompletion(taskId, currentlyCompleted) {
+            const ref = doc(
+                db, "groups", groupId, "tasks", taskId,
+                "completions", currentUser.uid
+            );
+
+            if (currentlyCompleted) {
+                await setDoc(ref, {
+                    status: "pending",
+                    updatedAt: serverTimestamp(),
+                    completedAt: null
+                });
+            } else {
+                await setDoc(ref, {
+                    status: "completed",
+                    updatedAt: serverTimestamp(),
+                    completedAt: serverTimestamp()
+                });
+            }
+        }
+
+        function renderMemberProgressTable(tasks, members, completionMaps, nameMap) {
+            memberProgress.replaceChildren();
+
+            if (!tasks.length) {
+                memberProgress.innerHTML =
+                    '<div class="message">Create assignments to track member progress.</div>';
                 return;
             }
 
-            try {
-                const groupRef = doc(db, "groups", groupId);
-                const groupSnapshot = await getDoc(groupRef);
-
-                if (!groupSnapshot.exists()) {
-                    groupName.textContent = "Group not found";
-                    groupDescription.textContent =
-                        "This group may have been deleted or the link is invalid.";
-                    createTaskPanel.hidden = true;
-                    showTaskMessage("Group unavailable.");
-                    return;
-                }
-
-                const data = groupSnapshot.data();
-
-                // Verify membership before displaying group information.
-                const memberRef = doc(
-                    db, "groups", groupId, "members", user.uid
-                );
-
-                const memberSnapshot = await getDoc(memberRef);
-
-                if (!memberSnapshot.exists()) {
-                    groupName.textContent = "Access denied";
-                    groupDescription.textContent =
-                        "You are not a member of this group.";
-                    createTaskPanel.hidden = true;
-                    showTaskMessage("You do not have access to this group.");
-                    return;
-                }
-
-                currentRole = memberSnapshot.data().role;
-
-                groupName.textContent = data.name || "Untitled group";
-                groupDescription.textContent =
-                    data.description || "No description added.";
-                groupIdLabel.textContent = `Group ID: ${groupId}`;
-                roleMessage.textContent = `Your role: ${currentRole}`;
-
-                // Only admins and teachers can create assignments.
-                createTaskPanel.hidden =
-                    !["admin", "teacher"].includes(currentRole);
-
-                await loadTasks();
-            } catch (error) {
-                console.error("Group loading error:", error);
-
-                groupName.textContent = "Could not load group";
-                groupDescription.textContent =
-                    "Check your Firestore security rules.";
-                createTaskPanel.hidden = true;
-                showTaskMessage("Unable to load group details.");
+            if (!members.length) {
+                memberProgress.innerHTML =
+                    '<div class="message">No members in this group yet.</div>';
+                return;
             }
+
+            const table = document.createElement("table");
+            table.className = "progress-table";
+
+            const thead = document.createElement("thead");
+            const headRow = document.createElement("tr");
+            const assignmentHeader = document.createElement("th");
+            assignmentHeader.textContent = "Assignment";
+            headRow.appendChild(assignmentHeader);
+
+            for (const member of members) {
+                const th = document.createElement("th");
+                th.textContent = nameMap.get(member.uid) || "Member";
+                headRow.appendChild(th);
+            }
+
+            thead.appendChild(headRow);
+            table.appendChild(thead);
+
+            const tbody = document.createElement("tbody");
+
+            for (const task of tasks) {
+                const row = document.createElement("tr");
+                const titleCell = document.createElement("td");
+                titleCell.textContent = task.title || "Untitled";
+                row.appendChild(titleCell);
+
+                const completions = completionMaps.get(task.id) || new Map();
+
+                for (const member of members) {
+                    const cell = document.createElement("td");
+                    const data = completions.get(member.uid);
+                    const done = data?.status === "completed";
+
+                    const dot = document.createElement("span");
+                    dot.className = done ? "dot done" : "dot";
+                    dot.title = done ? "Completed" : "Pending";
+                    dot.setAttribute("aria-label", dot.title);
+
+                    cell.appendChild(dot);
+                    row.appendChild(cell);
+                }
+
+                tbody.appendChild(row);
+            }
+
+            table.appendChild(tbody);
+            memberProgress.appendChild(table);
+        }
+
+        async function refreshMemberProgress() {
+            if (!isAdmin() || !cachedTasks.length) {
+                if (isAdmin()) {
+                    renderMemberProgressTable([], cachedMembers, new Map(), new Map());
+                }
+                return;
+            }
+
+            const completionMaps = new Map();
+
+            for (const task of cachedTasks) {
+                completionMaps.set(task.id, await loadCompletionsForTask(task.id));
+            }
+
+            const nameMap = await fetchMemberProfiles(cachedMembers);
+            renderMemberProgressTable(
+                cachedTasks, cachedMembers, completionMaps, nameMap
+            );
+        }
+
+        async function renderTasks(tasks) {
+            if (!tasks.length) {
+                showTaskMessage("No assignments yet.");
+                return;
+            }
+
+            taskList.replaceChildren();
+
+            for (const task of tasks) {
+                const completions = await loadCompletionsForTask(task.id);
+                const mine = completions.get(currentUser.uid);
+                const completed = mine?.status === "completed";
+
+                const card = document.createElement("article");
+                card.className = "task-card";
+
+                const head = document.createElement("div");
+                head.className = "task-head";
+
+                const left = document.createElement("div");
+
+                const title = document.createElement("h3");
+                title.textContent = task.title || "Untitled assignment";
+
+                const description = document.createElement("p");
+                description.textContent =
+                    task.description || "No additional instructions.";
+
+                const deadline = document.createElement("p");
+                deadline.textContent = `Deadline: ${formatDate(task.dueDate)}`;
+
+                left.append(title, description, deadline);
+
+                const status = document.createElement("span");
+                status.className = `badge${completed ? " completed" : ""}`;
+                status.textContent = completed ? "Completed" : "Pending";
+
+                head.append(left, status);
+
+                const toggleBtn = document.createElement("button");
+                toggleBtn.type = "button";
+                toggleBtn.className = `secondary-button${completed ? " done" : ""}`;
+                toggleBtn.textContent = completed
+                    ? "Mark as incomplete"
+                    : "Mark as complete";
+
+                toggleBtn.addEventListener("click", async () => {
+                    toggleBtn.disabled = true;
+                    try {
+                        await toggleMyCompletion(task.id, completed);
+                        await loadTasks();
+                        if (isAdmin()) {
+                            await refreshMemberProgress();
+                        }
+                    } catch (error) {
+                        console.error("Completion update failed:", error);
+                        alert("Could not update completion. Check Firestore rules.");
+                    } finally {
+                        toggleBtn.disabled = false;
+                    }
+                });
+
+                card.append(head, toggleBtn);
+                taskList.appendChild(card);
+            }
+        }
+
+        async function loadMembers() {
+            const snap = await getDocs(
+                collection(db, "groups", groupId, "members")
+            );
+
+            cachedMembers = snap.docs.map(item => ({
+                uid: item.id,
+                ...item.data()
+            }));
+
+            cachedMembers.sort((a, b) => {
+                const aAdmin = normalizeRole(a.role) === "admin" ? 0 : 1;
+                const bAdmin = normalizeRole(b.role) === "admin" ? 0 : 1;
+                return aAdmin - bAdmin;
+            });
         }
 
         async function loadTasks() {
             showTaskMessage("Loading assignments...");
 
             try {
-                const tasksRef = collection(db, "groups", groupId, "tasks");
-
                 const tasksQuery = query(
-                    tasksRef,
+                    collection(db, "groups", groupId, "tasks"),
                     orderBy("createdAt", "desc"),
                     limit(50)
                 );
 
                 const snapshot = await getDocs(tasksQuery);
 
-                // If the collection is empty, show a helpful message.
-                if (snapshot.empty) {
-                    showTaskMessage("No assignments yet.");
-                    return;
-                }
+                cachedTasks = snapshot.docs.map(item => ({
+                    id: item.id,
+                    ...item.data()
+                }));
 
-                taskList.replaceChildren();
+                await renderTasks(cachedTasks);
 
-                for (const taskDoc of snapshot.docs) {
-                    const task = taskDoc.data();
-
-                    const card = document.createElement("article");
-                    card.className = "task-card";
-
-                    const title = document.createElement("h3");
-                    title.textContent = task.title || "Untitled assignment";
-
-                    const description = document.createElement("p");
-                    description.textContent =
-                        task.description || "No additional instructions.";
-
-                    const deadline = document.createElement("p");
-                    deadline.textContent = `Deadline: ${formatDate(task.dueDate)}`;
-
-                    const meta = document.createElement("div");
-                    meta.className = "task-meta";
-
-                    const status = document.createElement("span");
-                    status.className = "badge";
-                    status.textContent = task.status || "assigned";
-
-                    meta.appendChild(status);
-                    card.append(title, description, deadline, meta);
-                    taskList.appendChild(card);
+                if (isAdmin()) {
+                    await refreshMemberProgress();
                 }
             } catch (error) {
                 console.error("Assignment loading error:", error);
@@ -453,12 +657,78 @@
             }
         }
 
+        async function loadGroup(user) {
+            if (!groupId) {
+                groupName.textContent = "Group not selected";
+                groupDescription.textContent =
+                    "Open a group from Home or Groups.";
+                createTaskPanel.hidden = true;
+                memberProgressPanel.hidden = true;
+                showTaskMessage("A group ID is required.");
+                return;
+            }
+
+            try {
+                const groupSnapshot = await getDoc(doc(db, "groups", groupId));
+
+                if (!groupSnapshot.exists()) {
+                    groupName.textContent = "Group not found";
+                    groupDescription.textContent =
+                        "This group may have been deleted or the link is invalid.";
+                    createTaskPanel.hidden = true;
+                    memberProgressPanel.hidden = true;
+                    showTaskMessage("Group unavailable.");
+                    return;
+                }
+
+                const data = groupSnapshot.data();
+                const memberSnapshot = await getDoc(
+                    doc(db, "groups", groupId, "members", user.uid)
+                );
+
+                if (!memberSnapshot.exists()) {
+                    groupName.textContent = "Access denied";
+                    groupDescription.textContent =
+                        "You are not a member of this group.";
+                    createTaskPanel.hidden = true;
+                    memberProgressPanel.hidden = true;
+                    showTaskMessage("You do not have access to this group.");
+                    return;
+                }
+
+                currentRole = memberSnapshot.data().role;
+                const roleLabel = normalizeRole(currentRole) === "admin"
+                    ? "Admin"
+                    : "Member";
+
+                groupName.textContent = data.name || "Untitled group";
+                groupDescription.textContent =
+                    data.description || "No description added.";
+                groupIdLabel.textContent = `Group ID: ${groupId}`;
+                roleMessage.textContent = `Your role: ${roleLabel}`;
+
+                createTaskPanel.hidden = !isAdmin();
+                memberProgressPanel.hidden = !isAdmin();
+
+                await loadMembers();
+                await loadTasks();
+            } catch (error) {
+                console.error("Group loading error:", error);
+
+                groupName.textContent = "Could not load group";
+                groupDescription.textContent =
+                    "Check your Firestore security rules.";
+                createTaskPanel.hidden = true;
+                memberProgressPanel.hidden = true;
+                showTaskMessage("Unable to load group details.");
+            }
+        }
+
         taskForm.addEventListener("submit", async event => {
             event.preventDefault();
 
-            if (!currentUser ||
-                !["admin", "teacher"].includes(currentRole)) {
-                showNotice("You do not have permission to create assignments.", "error");
+            if (!currentUser || !isAdmin()) {
+                showNotice("Only group admins can create assignments.", "error");
                 return;
             }
 
@@ -481,11 +751,6 @@
                     return;
                 }
 
-                if (parsedDate.getTime() <= Date.now()) {
-                    showNotice("Choose a future deadline.", "error");
-                    return;
-                }
-
                 dueDate = Timestamp.fromDate(parsedDate);
             }
 
@@ -504,8 +769,7 @@
                         description,
                         createdBy: currentUser.uid,
                         createdAt: serverTimestamp(),
-                        dueDate,
-                        status: "assigned"
+                        dueDate
                     })
                     .commit();
 

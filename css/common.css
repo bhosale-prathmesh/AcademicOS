@@ -1,0 +1,41 @@
+:root {
+  --aos-bg: #F4F6F9;
+  --aos-surface: #FFFFFF;
+  --aos-text: #14213D;
+  --aos-muted: #64748B;
+  --aos-border: #D9DFE8;
+  --aos-primary: #0E7C7B;
+  --aos-primary-dark: #0A5F5E;
+  --aos-danger: #C62828;
+  --aos-success: #167347;
+}
+
+.aos-toast {
+  position: fixed;
+  z-index: 200;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  max-width: calc(100% - 32px);
+  padding: 12px 16px;
+  border: 1px solid var(--aos-border);
+  border-radius: 12px;
+  background: var(--aos-surface);
+  color: var(--aos-text);
+  box-shadow: 0 10px 30px rgba(20, 33, 61, 0.16);
+  font-size: 14px;
+}
+
+.aos-toast[hidden] {
+  display: none !important;
+}
+
+.aos-toast.error {
+  border-color: #FECACA;
+  color: var(--aos-danger);
+}
+
+.aos-toast.success {
+  border-color: #BBF7D0;
+  color: var(--aos-success);
+}

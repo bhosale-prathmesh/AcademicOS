@@ -1,0 +1,16 @@
+.auth-page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 28px 16px;
+  background: var(--aos-bg, #F4F6F9);
+}
+
+.auth-card {
+  width: min(100%, 460px);
+  background: var(--aos-surface, #fff);
+  border: 1px solid var(--aos-border, #D9DFE8);
+  border-radius: 20px;
+  padding: clamp(20px, 5vw, 30px);
+}

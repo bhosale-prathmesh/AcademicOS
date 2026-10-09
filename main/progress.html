@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Progress | AcademicOS</title>
+    <style>
+        :root {
+            --bg: #f8fafc;
+            --surface: #ffffff;
+            --text: #0f172a;
+            --muted: #64748b;
+            --border: #e2e8f0;
+            --blue: #3b82f6;
+            --green: #16a34a;
+            --orange: #ea580c;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: Inter, system-ui, Arial, sans-serif;
+        }
+
+        main {
+            width: min(1100px, 100%);
+            margin: auto;
+            padding: 28px 22px 50px;
+        }
+
+        .top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 28px;
+        }
+
+        h1 {
+            font-size: clamp(25px, 4vw, 34px);
+            margin: 0 0 8px;
+        }
+
+        h2 {
+            font-size: 18px;
+            margin: 0 0 18px;
+        }
+
+        p {
+            color: var(--muted);
+        }
+
+        .subtitle {
+            margin: 0;
+            font-size: 14px;
+        }
+
+        button,
+        a.button {
+            border: 0;
+            background: var(--blue);
+            color: white;
+            padding: 11px 16px;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        button:disabled {
+            opacity: .6;
+            cursor: wait;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .panel,
+        .stat {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px;
+            min-width: 0;
+        }
+
+        .stat-label {
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        .stat-value {
+            font-size: 30px;
+            font-weight: 750;
+            margin: 10px 0 4px;
+        }
+
+        .stat-note {
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .progress-track {
+            height: 9px;
+            background: #e2e8f0;
+            border-radius: 99px;
+            overflow: hidden;
+            margin: 14px 0 8px;
+        }
+
+        .progress-fill {
+            width: 0;
+            height: 100%;
+            background: var(--blue);
+            border-radius: inherit;
+            transition: width .3s ease;
+        }
+
+        .section {
+            margin-bottom: 22px;
+        }
+
+        .section-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .section-head h2 {
+            margin: 0;
+        }
+
+        .list {
+            display: grid;
+            gap: 12px;
+        }
+
+        .task-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 15px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .task-row:last-child {
+            border-bottom: 0;
+        }
+
+        .task-name {
+            font-weight: 650;
+            overflow-wrap: anywhere;
+        }
+
+        .task-meta {
+            color: var(--muted);
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .status {
+            flex-shrink: 0;
+            padding: 6px 10px;
+            border-radius: 99px;
+            background: #eff6ff;
+            color: #1d4ed8;
+            font-size: 12px;
+            font-weight: 650;
+            text-transform: capitalize;
+        }
+
+        .status.completed {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .status.pending {
+            background: #ffedd5;
+            color: #9a3412;
+        }
+
+        .status.in_progress {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+
+        .empty,
+        .message {
+            padding: 22px 8px;
+            color: var(--muted);
+            text-align: center;
+            font-size: 14px;
+        }
+
+        .group-progress {
+            padding: 16px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .group-progress:last-child {
+            border-bottom: 0;
+        }
+
+        .group-title {
+            font-weight: 650;
+        }
+
+        .group-numbers {
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .error {
+            color: #b91c1c;
+        }
+
+        @media (max-width: 760px) {
+            main {
+                padding: 22px 15px 35px;
+            }
+
+            .grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .stat {
+                padding: 16px;
+            }
+
+            .stat-value {
+                font-size: 26px;
+            }
+        }
+
+        @media (max-width: 380px) {
+            .grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 9px;
+            }
+
+            .stat {
+                padding: 12px;
+            }
+
+            .task-row {
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <main>
+        <header class="top">
+            <div>
+                <h1>Your Progress</h1>
+                <p class="subtitle">Track your tasks and academic consistency.</p>
+            </div>
+            <button id="refreshButton" type="button">Refresh data ↻</button>
+        </header>
+
+        <section class="grid" aria-label="Progress summary">
+            <article class="stat">
+                <div class="stat-label">Total personal tasks</div>
+                <div class="stat-value" id="totalTasks">—</div>
+                <div class="stat-note">Tasks in your account</div>
+            </article>
+
+            <article class="stat">
+                <div class="stat-label">Completed</div>
+                <div class="stat-value" id="completedTasks">—</div>
+                <div class="stat-note">Finished personal tasks</div>
+            </article>
+
+            <article class="stat">
+                <div class="stat-label">Pending</div>
+                <div class="stat-value" id="pendingTasks">—</div>
+                <div class="stat-note">Not completed yet</div>
+            </article>
+
+            <article class="stat">
+                <div class="stat-label">Completion rate</div>
+                <div class="stat-value" id="completionRate">—</div>
+                <div class="progress-track">
+                    <div class="progress-fill" id="overallBar"></div>
+                </div>
+                <div class="stat-note">Based on personal tasks</div>
+            </article>
+        </section>
+
+        <section class="panel section">
+            <div class="section-head">
+                <h2>Personal task progress</h2>
+                <span id="personalSummary" class="stat-note">Loading...</span>
+            </div>
+
+            <form id="personalTaskForm" style="display:grid;gap:10px;margin-bottom:18px;">
+                <input id="newTaskTitle" type="text" maxlength="200" required
+                    placeholder="New personal task title"
+                    style="padding:12px;border:1px solid var(--border);border-radius:10px;">
+                <input id="newTaskDue" type="date"
+                    style="padding:12px;border:1px solid var(--border);border-radius:10px;">
+                <button type="submit" id="addTaskButton">Add personal task</button>
+            </form>
+
+            <div id="personalList" class="list">
+                <div class="message">Loading your tasks...</div>
+            </div>
+        </section>
+
+        <section class="panel section">
+            <div class="section-head">
+                <h2>Group assignment progress</h2>
+                <span id="groupSummary" class="stat-note">Loading...</span>
+            </div>
+            <div id="groupList">
+                <div class="message">Loading group assignments...</div>
+            </div>
+        </section>
+
+        <p id="pageMessage" class="subtitle" role="status"></p>
+    </main>
+
+    <script type="module">
+        import { auth, db } from "../core/firebase-config.js";
+
+        import {
+            onAuthStateChanged
+        } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+
+        import {
+            collection,
+            getDocs,
+            doc,
+            getDoc,
+            setDoc,
+            serverTimestamp
+        } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+
+        const $ = id => document.getElementById(id);
+
+        const refreshButton = $("refreshButton");
+        const personalTaskForm = $("personalTaskForm");
+        const newTaskTitle = $("newTaskTitle");
+        const newTaskDue = $("newTaskDue");
+        const addTaskButton = $("addTaskButton");
+
+        let currentUser = null;
+        let loadSequence = 0;
+
+        function setText(id, value) {
+            $(id).textContent = value;
+        }
+
+        function dateValue(value) {
+            if (!value) return null;
+            if (typeof value.toDate === "function") return value.toDate();
+
+            const date = new Date(value);
+            return Number.isNaN(date.getTime()) ? null : date;
+        }
+
+        function formatDate(value) {
+            const date = dateValue(value);
+            if (!date) return "No due date";
+            return date.toLocaleDateString();
+        }
+
+        function safeStatus(status) {
+            return ["pending", "in_progress", "completed"].includes(status)
+                ? status
+                : "pending";
+        }
+
+        function renderPersonalTasks(tasks) {
+            const list = $("personalList");
+            list.replaceChildren();
+
+            if (!tasks.length) {
+                const empty = document.createElement("div");
+                empty.className = "empty";
+                empty.textContent = "No personal tasks found yet.";
+                list.appendChild(empty);
+                return;
+            }
+
+            tasks.sort((a, b) => {
+                const aDone = a.status === "completed" ? 1 : 0;
+                const bDone = b.status === "completed" ? 1 : 0;
+                return aDone - bDone;
+            });
+
+            for (const task of tasks.slice(0, 30)) {
+                const row = document.createElement("div");
+                row.className = "task-row";
+
+                const details = document.createElement("div");
+                const title = document.createElement("div");
+                title.className = "task-name";
+                title.textContent = task.title || "Untitled task";
+
+                const meta = document.createElement("div");
+                meta.className = "task-meta";
+                meta.textContent = task.dueDate
+                    ? `Due: ${formatDate(task.dueDate)}`
+                    : "Personal task";
+
+                details.append(title, meta);
+
+                const actions = document.createElement("div");
+                actions.style.display = "flex";
+                actions.style.flexDirection = "column";
+                actions.style.alignItems = "flex-end";
+                actions.style.gap = "8px";
+
+                const status = document.createElement("span");
+                status.className = `status ${safeStatus(task.status)}`;
+                status.textContent = safeStatus(task.status).replace("_", " ");
+
+                const toggle = document.createElement("button");
+                toggle.type = "button";
+                toggle.textContent = task.status === "completed"
+                    ? "Mark incomplete"
+                    : "Mark complete";
+                toggle.style.fontSize = "12px";
+                toggle.style.padding = "6px 10px";
+
+                toggle.addEventListener("click", async () => {
+                    toggle.disabled = true;
+                    try {
+                        const taskRef = doc(
+                            db, "users", currentUser.uid,
+                            "personalTasks", task.id
+                        );
+                        const nextCompleted = task.status !== "completed";
+
+                        await setDoc(taskRef, {
+                            title: task.title || "Untitled task",
+                            dueDate: task.dueDate || null,
+                            status: nextCompleted ? "completed" : "pending",
+                            completedAt: nextCompleted
+                                ? serverTimestamp()
+                                : null,
+                            updatedAt: serverTimestamp()
+                        }, { merge: true });
+
+                        await loadProgress(currentUser, ++loadSequence);
+                    } catch (error) {
+                        console.error("Personal task update failed:", error);
+                    } finally {
+                        toggle.disabled = false;
+                    }
+                });
+
+                actions.append(status, toggle);
+                row.append(details, actions);
+                list.appendChild(row);
+            }
+        }
+
+        function renderGroupProgress(groups) {
+            const list = $("groupList");
+            list.replaceChildren();
+
+            if (!groups.length) {
+                const empty = document.createElement("div");
+                empty.className = "empty";
+                empty.textContent =
+                    "No group assignments found. Join a group to see its progress.";
+                list.appendChild(empty);
+                return;
+            }
+
+            for (const group of groups) {
+                const section = document.createElement("div");
+                section.className = "group-progress";
+
+                const title = document.createElement("div");
+                title.className = "group-title";
+                title.textContent = group.name;
+
+                const total = group.total;
+                const completed = group.completed;
+                const percent = total ? Math.round(completed / total * 100) : 0;
+
+                const numbers = document.createElement("div");
+                numbers.className = "group-numbers";
+                numbers.textContent =
+                    `${completed} of ${total} assignments completed · ${percent}%`;
+
+                const track = document.createElement("div");
+                track.className = "progress-track";
+
+                const fill = document.createElement("div");
+                fill.className = "progress-fill";
+                fill.style.width = `${percent}%`;
+
+                track.appendChild(fill);
+                section.append(title, numbers, track);
+                list.appendChild(section);
+            }
+        }
+
+        async function loadProgress(user, sequence) {
+            refreshButton.disabled = true;
+            setText("pageMessage", "Updating progress...");
+
+            try {
+                // 1. Personal tasks
+                const personalSnapshot = await getDocs(
+                    collection(db, "users", user.uid, "personalTasks")
+                );
+
+                if (sequence !== loadSequence) return;
+
+                const personalTasks = personalSnapshot.docs.map(item => ({
+                    id: item.id,
+                    ...item.data()
+                }));
+
+                const completed = personalTasks.filter(
+                    task => task.status === "completed"
+                ).length;
+
+                const pending = personalTasks.length - completed;
+                const rate = personalTasks.length
+                    ? Math.round(completed / personalTasks.length * 100)
+                    : 0;
+
+                setText("totalTasks", personalTasks.length);
+                setText("completedTasks", completed);
+                setText("pendingTasks", pending);
+                setText("completionRate", `${rate}%`);
+                setText("personalSummary", `${personalTasks.length} tasks`);
+                $("overallBar").style.width = `${rate}%`;
+
+                renderPersonalTasks(personalTasks);
+
+                const joinedSnapshot = await getDocs(
+                    collection(db, "users", user.uid, "joinedGroups")
+                );
+
+                if (sequence !== loadSequence) return;
+
+                const groups = [];
+
+                for (const joinedDoc of joinedSnapshot.docs) {
+                    const groupId = joinedDoc.id;
+
+                    const groupSnapshot = await getDoc(doc(db, "groups", groupId));
+                    if (!groupSnapshot.exists()) continue;
+
+                    const groupData = groupSnapshot.data();
+
+                    const tasksSnapshot = await getDocs(
+                        collection(db, "groups", groupId, "tasks")
+                    );
+
+                    if (sequence !== loadSequence) return;
+
+                    let completedCount = 0;
+
+                    for (const taskDoc of tasksSnapshot.docs) {
+                        const completionSnap = await getDoc(
+                            doc(
+                                db, "groups", groupId, "tasks",
+                                taskDoc.id, "completions", user.uid
+                            )
+                        );
+
+                        if (completionSnap.exists()
+                            && completionSnap.data().status === "completed") {
+                            completedCount += 1;
+                        }
+                    }
+
+                    const total = tasksSnapshot.size;
+
+                    groups.push({
+                        name: groupData.name || "Unnamed group",
+                        total,
+                        completed: completedCount
+                    });
+                }
+
+                if (sequence !== loadSequence) return;
+
+                renderGroupProgress(groups);
+
+                const groupTaskCount = groups.reduce(
+                    (sum, group) => sum + group.total, 0
+                );
+
+                setText(
+                    "groupSummary",
+                    `${groups.length} groups · ${groupTaskCount} assignments`
+                );
+
+                setText("pageMessage", "Progress updated successfully.");
+            } catch (error) {
+                console.error("Progress loading failed:", error);
+
+                setText(
+                    "pageMessage",
+                    "Unable to load some progress data. Check Firestore rules and console."
+                );
+
+                $("pageMessage").className = "subtitle error";
+            } finally {
+                if (sequence === loadSequence) {
+                    refreshButton.disabled = false;
+                }
+            }
+        }
+
+        refreshButton.addEventListener("click", () => {
+            if (!currentUser) return;
+            loadProgress(currentUser, ++loadSequence);
+        });
+
+        personalTaskForm.addEventListener("submit", async event => {
+            event.preventDefault();
+            if (!currentUser) return;
+
+            const title = newTaskTitle.value.trim();
+            if (!title) return;
+
+            addTaskButton.disabled = true;
+
+            try {
+                const taskRef = doc(
+                    collection(db, "users", currentUser.uid, "personalTasks")
+                );
+
+                const payload = {
+                    title,
+                    status: "pending",
+                    createdAt: serverTimestamp(),
+                    updatedAt: serverTimestamp(),
+                    completedAt: null
+                };
+
+                if (newTaskDue.value) {
+                    payload.dueDate = newTaskDue.value;
+                }
+
+                await setDoc(taskRef, payload);
+
+                personalTaskForm.reset();
+                await loadProgress(currentUser, ++loadSequence);
+            } catch (error) {
+                console.error("Add personal task failed:", error);
+                setText("pageMessage", "Could not add personal task.");
+            } finally {
+                addTaskButton.disabled = false;
+            }
+        });
+
+        onAuthStateChanged(auth, user => {
+            if (!user) {
+                window.location.replace("./account.html");
+                return;
+            }
+
+            currentUser = user;
+            loadProgress(user, ++loadSequence);
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,90 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function isGroupMember(groupId) {
+      return signedIn() &&
+        exists(/databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid));
+    }
+
+    function groupMemberRole(groupId) {
+      return get(/databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid)).data.role;
+    }
+
+    function isGroupStaff(groupId) {
+      return isGroupMember(groupId)
+        && groupMemberRole(groupId) in ['admin', 'teacher'];
+    }
+
+    match /users/{userId} {
+      allow read: if isSelf(userId);
+      allow create: if isSelf(userId);
+      allow update: if isSelf(userId);
+
+      match /personalTasks/{taskId} {
+        allow read, write: if isSelf(userId);
+      }
+
+      match /joinedGroups/{groupId} {
+        allow read: if isSelf(userId);
+        allow create: if isSelf(userId);
+        allow delete: if isSelf(userId);
+      }
+    }
+
+    match /groups/{groupId} {
+      allow get: if signedIn();
+      allow list: if signedIn() && resource.data.createdBy == request.auth.uid;
+      allow create: if signedIn()
+        && request.resource.data.createdBy == request.auth.uid;
+      allow update: if isGroupStaff(groupId);
+
+      match /members/{memberId} {
+        allow read: if isGroupMember(groupId);
+        allow create: if signedIn() && (
+          (memberId == request.auth.uid
+            && request.resource.data.uid == request.auth.uid
+            && (
+              request.resource.data.role == 'student'
+              || (
+                request.resource.data.role == 'admin'
+                && get(/databases/$(database)/documents/groups/$(groupId)).data.createdBy == request.auth.uid
+              )
+            ))
+          || isGroupStaff(groupId)
+        );
+        allow update: if isGroupStaff(groupId);
+      }
+
+      match /tasks/{taskId} {
+        allow read: if isGroupMember(groupId);
+        allow create, update, delete: if isGroupStaff(groupId);
+
+        match /progress/{studentId} {
+          allow read: if isGroupMember(groupId);
+          allow write: if isSelf(studentId) && isGroupMember(groupId);
+        }
+
+        match /submissions/{studentId} {
+          allow read: if isGroupMember(groupId);
+
+          allow create, update: if isSelf(studentId)
+            && isGroupMember(groupId)
+            && groupMemberRole(groupId) == 'student'
+            && (!request.resource.data.keys().hasAny(['reviewStatus'])
+              || request.resource.data.reviewStatus == 'pending');
+
+          allow update: if isGroupStaff(groupId);
+        }
+      }
+    }
+  }
+}

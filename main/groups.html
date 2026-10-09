@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Groups | AcademicOS</title>
+
+    <style>
+        :root {
+            --bg: #f8fafc;
+            --surface: #ffffff;
+            --text: #0f172a;
+            --muted: #64748b;
+            --border: #e2e8f0;
+            --blue: #3b82f6;
+            --green: #15803d;
+            --red: #b91c1c;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: Inter, system-ui, Arial, sans-serif;
+        }
+
+        main {
+            max-width: 1000px;
+            margin: auto;
+            padding: 28px 20px 50px;
+        }
+
+        h1 {
+            font-size: clamp(26px, 4vw, 34px);
+            margin: 0 0 8px;
+        }
+
+        h2 {
+            font-size: 19px;
+            margin: 0 0 16px;
+        }
+
+        .muted {
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 22px;
+            margin-top: 22px;
+        }
+
+        .join-form {
+            display: flex;
+            gap: 10px;
+            margin-top: 18px;
+        }
+
+        input {
+            width: 100%;
+            min-width: 0;
+            padding: 13px 14px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: white;
+            color: var(--text);
+            font: inherit;
+            outline: none;
+        }
+
+        input:focus {
+            border-color: var(--blue);
+            box-shadow: 0 0 0 3px #3b82f622;
+        }
+
+        button {
+            padding: 12px 18px;
+            border: 0;
+            border-radius: 10px;
+            background: var(--blue);
+            color: white;
+            font-weight: 650;
+            font-size: 14px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        button:disabled {
+            opacity: .6;
+            cursor: wait;
+        }
+
+        .message {
+            margin-top: 14px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .error {
+            color: var(--red);
+        }
+
+        .success {
+            color: var(--green);
+        }
+
+        .group-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 14px;
+        }
+
+        .group-card {
+            border: 1px solid var(--border);
+            border-radius: 13px;
+            padding: 18px;
+            background: white;
+        }
+
+        .group-card h3 {
+            margin: 0 0 8px;
+            font-size: 17px;
+            overflow-wrap: anywhere;
+        }
+
+        .group-card p {
+            margin: 0 0 14px;
+            font-size: 13px;
+            color: var(--muted);
+            line-height: 1.5;
+        }
+
+        .group-id {
+            font-size: 12px;
+            color: var(--muted);
+            overflow-wrap: anywhere;
+            margin-bottom: 14px;
+        }
+
+        .open-link {
+            display: inline-block;
+            color: var(--blue);
+            text-decoration: none;
+            font-weight: 650;
+            font-size: 14px;
+        }
+
+        .empty {
+            color: var(--muted);
+            padding: 18px 0;
+            font-size: 14px;
+        }
+
+        @media (max-width: 520px) {
+            main {
+                padding: 22px 14px 35px;
+            }
+
+            .panel {
+                padding: 17px;
+            }
+
+            .join-form {
+                flex-direction: column;
+            }
+
+            .join-form button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <main>
+        <header>
+            <h1>Explore Groups</h1>
+            <p class="muted">
+                Join your class or study group using the Group ID shared by its admin.
+            </p>
+        </header>
+
+        <section class="panel">
+            <h2>Create a group</h2>
+            <p class="muted">
+                Start a class or study group. You will be the admin and can share the Group ID with members.
+            </p>
+
+            <form id="createForm" class="join-form" style="flex-direction:column;align-items:stretch;">
+                <input id="newGroupName" type="text" placeholder="Group name" maxlength="80" required>
+                <input id="newGroupDescription" type="text" placeholder="Short description (optional)" maxlength="300">
+                <button id="createButton" type="submit">Create Group</button>
+            </form>
+
+            <div id="createMessage" class="message" role="status"></div>
+        </section>
+
+        <section class="panel">
+            <h2>Join a group</h2>
+            <p class="muted">
+                Enter the Group ID provided by your teacher or group admin.
+            </p>
+
+            <form id="joinForm" class="join-form">
+                <input id="groupIdInput" type="text" placeholder="Enter Group ID" autocomplete="off" required
+                    maxlength="150">
+                <button id="joinButton" type="submit">Join Group</button>
+            </form>
+
+            <div id="joinMessage" class="message" role="status"></div>
+        </section>
+
+        <section class="panel">
+            <h2>My Groups</h2>
+            <p class="muted">Groups you have joined will appear here.</p>
+
+            <div id="groupsList" class="group-list">
+                <div class="empty">Loading your groups...</div>
+            </div>
+        </section>
+    </main>
+
+    <script type="module">
+        import { auth, db } from "../core/firebase-config.js";
+
+        import {
+            onAuthStateChanged
+        } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+
+        import {
+            collection,
+            doc,
+            getDoc,
+            getDocs,
+            writeBatch,
+            serverTimestamp
+        } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+
+        const $ = id => document.getElementById(id);
+
+        const createForm = $("createForm");
+        const newGroupName = $("newGroupName");
+        const newGroupDescription = $("newGroupDescription");
+        const createButton = $("createButton");
+        const createMessage = $("createMessage");
+        const joinForm = $("joinForm");
+        const groupIdInput = $("groupIdInput");
+        const joinButton = $("joinButton");
+        const joinMessage = $("joinMessage");
+        const groupsList = $("groupsList");
+
+        let currentUser = null;
+
+        function showMessage(message, type = "") {
+            joinMessage.textContent = message;
+            joinMessage.className = `message ${type}`;
+        }
+
+        function showCreateMessage(message, type = "") {
+            createMessage.textContent = message;
+            createMessage.className = `message ${type}`;
+        }
+
+        function roleLabel(role) {
+            if (role === "admin" || role === "teacher") return "Admin";
+            return "Member";
+        }
+
+        function showEmpty(message) {
+            groupsList.replaceChildren();
+
+            const element = document.createElement("div");
+            element.className = "empty";
+            element.textContent = message;
+
+            groupsList.appendChild(element);
+        }
+
+        function renderGroups(groups) {
+            groupsList.replaceChildren();
+
+            if (!groups.length) {
+                showEmpty("You haven't joined any groups yet.");
+                return;
+            }
+
+            for (const group of groups) {
+                const card = document.createElement("article");
+                card.className = "group-card";
+
+                const title = document.createElement("h3");
+                title.textContent = group.name || "Unnamed group";
+
+                const description = document.createElement("p");
+                description.textContent =
+                    group.description || "No description provided.";
+
+                const id = document.createElement("div");
+                id.className = "group-id";
+                id.textContent =
+                    `Group ID: ${group.id} · ${roleLabel(group.myRole)}`;
+
+                const link = document.createElement("a");
+                link.className = "open-link";
+                link.href =
+                    `../main/group.html?groupId=${encodeURIComponent(group.id)}`;
+                link.target = "_top";
+                link.textContent = "Open group →";
+
+                card.append(title, description, id, link);
+                groupsList.appendChild(card);
+            }
+        }
+
+        async function loadMyGroups(user) {
+            showEmpty("Loading your groups...");
+
+            try {
+                // Each joined group has a pointer under the user's profile.
+                const joinedSnapshot = await getDocs(
+                    collection(db, "users", user.uid, "joinedGroups")
+                );
+
+                const groups = [];
+
+                for (const joinedDoc of joinedSnapshot.docs) {
+                    const groupId = joinedDoc.id;
+
+                    const groupSnapshot = await getDoc(
+                        doc(db, "groups", groupId)
+                    );
+
+                    if (!groupSnapshot.exists()) continue;
+
+                    const memberSnapshot = await getDoc(
+                        doc(db, "groups", groupId, "members", user.uid)
+                    );
+
+                    groups.push({
+                        id: groupSnapshot.id,
+                        ...groupSnapshot.data(),
+                        myRole: memberSnapshot.exists()
+                            ? memberSnapshot.data().role
+                            : "member"
+                    });
+                }
+
+                renderGroups(groups);
+            } catch (error) {
+                console.error("Loading joined groups failed:", error);
+                showEmpty(
+                    "Could not load groups. Check your Firestore security rules."
+                );
+            }
+        }
+
+        createForm.addEventListener("submit", async event => {
+            event.preventDefault();
+
+            const user = auth.currentUser;
+
+            if (!user || !currentUser || user.uid !== currentUser.uid) {
+                showCreateMessage("Please sign in again.", "error");
+                return;
+            }
+
+            const name = newGroupName.value.trim();
+            const description = newGroupDescription.value.trim();
+
+            if (!name) {
+                showCreateMessage("Enter a group name.", "error");
+                return;
+            }
+
+            createButton.disabled = true;
+            createButton.textContent = "Creating...";
+            showCreateMessage("");
+
+            try {
+                const groupRef = doc(collection(db, "groups"));
+                const memberRef = doc(
+                    db, "groups", groupRef.id, "members", user.uid
+                );
+                const joinedGroupRef = doc(
+                    db, "users", user.uid, "joinedGroups", groupRef.id
+                );
+
+                const batch = writeBatch(db);
+
+                batch.set(groupRef, {
+                    name,
+                    description,
+                    createdBy: user.uid,
+                    createdAt: serverTimestamp()
+                });
+
+                batch.set(memberRef, {
+                    uid: user.uid,
+                    role: "admin",
+                    joinedAt: serverTimestamp()
+                });
+
+                batch.set(joinedGroupRef, {
+                    groupId: groupRef.id,
+                    joinedAt: serverTimestamp()
+                });
+
+                await batch.commit();
+
+                createForm.reset();
+                showCreateMessage(
+                    `Group created! Share this ID: ${groupRef.id}`,
+                    "success"
+                );
+
+                await loadMyGroups(user);
+            } catch (error) {
+                console.error("Create group failed:", error);
+                showCreateMessage(
+                    error.code === "permission-denied"
+                        ? "Permission denied. Check Firestore rules."
+                        : "Could not create group. Try again.",
+                    "error"
+                );
+            } finally {
+                createButton.disabled = false;
+                createButton.textContent = "Create Group";
+            }
+        });
+
+        joinForm.addEventListener("submit", async event => {
+            event.preventDefault();
+
+            const user = auth.currentUser;
+
+            if (!user || !currentUser || user.uid !== currentUser.uid) {
+                showMessage("Please sign in again.", "error");
+                return;
+            }
+
+            const groupId = groupIdInput.value.trim();
+
+            if (!groupId || groupId.includes("/")) {
+                showMessage("Enter a valid Group ID.", "error");
+                return;
+            }
+
+            joinButton.disabled = true;
+            joinButton.textContent = "Joining...";
+            showMessage("");
+
+            try {
+                const groupRef = doc(db, "groups", groupId);
+                const groupSnapshot = await getDoc(groupRef);
+
+                if (!groupSnapshot.exists()) {
+                    showMessage(
+                        "Group not found. Check the ID with your admin.",
+                        "error"
+                    );
+                    return;
+                }
+
+                const memberRef = doc(
+                    db, "groups", groupId, "members", user.uid
+                );
+
+                const memberSnapshot = await getDoc(memberRef);
+
+                if (memberSnapshot.exists()) {
+                    showMessage("You are already a member of this group.", "success");
+                    groupIdInput.value = "";
+                    await loadMyGroups(user);
+                    return;
+                }
+
+                const joinedGroupRef = doc(
+                    db, "users", user.uid, "joinedGroups", groupId
+                );
+
+                const batch = writeBatch(db);
+
+                batch.set(memberRef, {
+                    uid: user.uid,
+                    role: "member",
+                    joinedAt: serverTimestamp()
+                });
+
+                batch.set(joinedGroupRef, {
+                    groupId,
+                    joinedAt: serverTimestamp()
+                });
+
+                await batch.commit();
+
+                groupIdInput.value = "";
+                showMessage(
+                    `Successfully joined ${groupSnapshot.data().name || "the group"}!`,
+                    "success"
+                );
+
+                await loadMyGroups(user);
+            } catch (error) {
+                console.error("Joining group failed:", error);
+
+                if (error.code === "permission-denied") {
+                    showMessage(
+                        "Permission denied. Firestore rules must allow group lookup and secure student joining.",
+                        "error"
+                    );
+                } else {
+                    showMessage(
+                        "Unable to join. Check the Group ID and internet connection.",
+                        "error"
+                    );
+                }
+            } finally {
+                joinButton.disabled = false;
+                joinButton.textContent = "Join Group";
+            }
+        });
+
+        onAuthStateChanged(auth, user => {
+            if (!user) {
+                window.location.replace("../main/account.html");
+                return;
+            }
+
+            currentUser = user;
+            loadMyGroups(user);
+        });
+    </script>
+</body>
+
+</html>

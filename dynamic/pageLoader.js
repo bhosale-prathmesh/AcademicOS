@@ -1,9 +1,11 @@
 
+import { routes } from "./navigation.js";
+
 const pageRoutes = {
-  home: "./dynamic/home.html",
-  groups: "./main/groups.html",
-  progress: "./main/progress.html",
-  settings: "./main/settings.html"
+  home: routes.home,
+  groups: routes.groups,
+  progress: routes.progress,
+  settings: routes.settings
 };
 
 export function initPageLoader() {
