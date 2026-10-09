@@ -439,7 +439,18 @@
 
     <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
-    <script>
+    <script type="module">
+        import { auth } from "./core/firebase-config.js";
+        import { onAuthStateChanged } from
+            "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+
+        onAuthStateChanged(auth, (user) => {
+            if (!user) {
+                window.location.replace("./main/account.html");
+            }
+        });
+
+
         const toast = document.getElementById("toast");
         const sectionHeading = document.getElementById("sectionHeading");
         const navItems = document.querySelectorAll(".nav-item");
