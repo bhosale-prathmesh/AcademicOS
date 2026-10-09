@@ -583,7 +583,8 @@
         let currentUser = null;
         let toastTimer = null;
 
-        // Use local calendar dates consistently.
+        // ---------------- UTILITIES ----------------
+
         function dateKey(date) {
             const y = date.getFullYear();
             const m = String(date.getMonth() + 1).padStart(2, "0");
@@ -603,6 +604,11 @@
         }
 
         function showToast(message) {
+            if (!toast) {
+                console.log(message);
+                return;
+            }
+
             toast.textContent = message;
             toast.hidden = false;
 
@@ -613,11 +619,15 @@
         }
 
         function showFormMessage(message, type = "") {
+            if (!formMessage) return;
+
             formMessage.textContent = message;
             formMessage.className = type;
         }
 
         function showGroupMessage(message) {
+            if (!groupsList) return;
+
             groupsList.replaceChildren();
 
             const element = document.createElement("p");
@@ -630,6 +640,8 @@
         // ---------------- ACTIVITY HEATMAP ----------------
 
         function renderHeatmap(tasks) {
+            if (!heatmap || !activityTotal) return;
+
             heatmap.replaceChildren();
 
             const counts = new Map();
@@ -648,7 +660,6 @@
             const firstVisibleDay = new Date(today);
             firstVisibleDay.setDate(firstVisibleDay.getDate() - 364);
 
-            // Start at Sunday so the columns align like a contribution graph.
             const gridStart = new Date(firstVisibleDay);
             gridStart.setDate(gridStart.getDate() - gridStart.getDay());
 
@@ -692,13 +703,13 @@
         // ---------------- RECENT COMPLETED TASKS ----------------
 
         function renderRecentTasks(tasks) {
+            if (!taskList) return;
+
             taskList.replaceChildren();
 
             const now = new Date();
-            const today = new Date(now);
-            today.setHours(0, 0, 0, 0);
-
-            const cutoff = new Date(today);
+            const cutoff = new Date(now);
+            cutoff.setHours(0, 0, 0, 0);
             cutoff.setDate(cutoff.getDate() - 2);
 
             const recent = tasks
@@ -711,7 +722,9 @@
                     task.completionDate >= cutoff &&
                     task.completionDate <= now
                 )
-                .sort((a, b) => b.completionDate - a.completionDate);
+                .sort((a, b) =>
+                    b.completionDate - a.completionDate
+                );
 
             if (recent.length === 0) {
                 const empty = document.createElement("div");
@@ -741,7 +754,8 @@
 
                 const date = document.createElement("div");
                 date.className = "task-date";
-                date.textContent = task.completionDate.toLocaleString();
+                date.textContent =
+                    task.completionDate.toLocaleString();
 
                 content.append(title, date);
                 card.append(check, content);
@@ -766,21 +780,28 @@
             } catch (error) {
                 console.error("Activity loading failed:", error);
 
-                activityTotal.textContent = "Unavailable";
-                taskList.replaceChildren();
+                if (activityTotal) {
+                    activityTotal.textContent = "Unavailable";
+                }
 
-                const message = document.createElement("div");
-                message.className = "message";
-                message.textContent =
-                    "Unable to load tasks. Check Firestore rules and task data.";
+                if (taskList) {
+                    taskList.replaceChildren();
 
-                taskList.appendChild(message);
+                    const message = document.createElement("div");
+                    message.className = "message";
+                    message.textContent =
+                        "Unable to load activity. Check Firestore rules.";
+
+                    taskList.appendChild(message);
+                }
             }
         }
 
         // ---------------- ADMIN GROUPS ----------------
 
         function renderGroups(groups) {
+            if (!groupsList || !groupCount) return;
+
             groupsList.replaceChildren();
 
             groupCount.textContent =
@@ -794,8 +815,16 @@
             }
 
             for (const group of groups) {
-                const card = document.createElement("article");
+                // Full-page navigation, including when home is inside an iframe.
+                const card = document.createElement("a");
                 card.className = "group-card";
+                card.href =
+                    `../main/group.html?groupId=${encodeURIComponent(group.id)}`;
+                card.target = "_top";
+                card.style.display = "block";
+                card.style.color = "inherit";
+                card.style.textDecoration = "none";
+                card.style.cursor = "pointer";
 
                 const title = document.createElement("h3");
                 title.textContent = group.name || "Untitled group";
@@ -816,8 +845,14 @@
                 id.className = "group-id";
                 id.textContent = `ID: ${group.id.slice(0, 8)}`;
 
+                const hint = document.createElement("span");
+                hint.textContent = "Open group →";
+                hint.style.display = "block";
+                hint.style.marginTop = "10px";
+                hint.style.fontSize = "13px";
+
                 meta.append(role, id);
-                card.append(title, description, meta);
+                card.append(title, description, meta, hint);
                 groupsList.appendChild(card);
             }
         }
@@ -826,7 +861,6 @@
             showGroupMessage("Loading your groups...");
 
             try {
-                // This query displays groups created by the signed-in user.
                 const groupsQuery = query(
                     collection(db, "groups"),
                     where("createdBy", "==", user.uid)
@@ -842,10 +876,13 @@
                 renderGroups(groups);
             } catch (error) {
                 console.error("Group loading failed:", error);
-                groupCount.textContent = "Unavailable";
+
+                if (groupCount) {
+                    groupCount.textContent = "Unavailable";
+                }
 
                 showGroupMessage(
-                    "Unable to load groups. Check your Firestore security rules."
+                    "Unable to load groups. Check Firestore security rules."
                 );
             }
         }
@@ -853,42 +890,49 @@
         // ---------------- CREATE GROUP MODAL ----------------
 
         function openGroupModal() {
+            if (!groupModal || !createGroupForm) return;
+
             createGroupForm.reset();
             showFormMessage("");
             groupModal.hidden = false;
-            groupNameInput.focus();
+            groupNameInput?.focus();
         }
 
         function closeModal() {
+            if (!groupModal) return;
+
             groupModal.hidden = true;
-            createGroupButton.focus();
+            createGroupButton?.focus();
         }
 
-        createGroupButton.addEventListener("click", openGroupModal);
-        closeGroupModal.addEventListener("click", closeModal);
-        cancelGroupButton.addEventListener("click", closeModal);
+        createGroupButton?.addEventListener("click", openGroupModal);
+        closeGroupModal?.addEventListener("click", closeModal);
+        cancelGroupButton?.addEventListener("click", closeModal);
 
-        groupModal.addEventListener("click", event => {
+        groupModal?.addEventListener("click", event => {
             if (event.target === groupModal) {
                 closeModal();
             }
         });
 
         document.addEventListener("keydown", event => {
-            if (event.key === "Escape" && !groupModal.hidden) {
+            if (event.key === "Escape" && groupModal && !groupModal.hidden) {
                 closeModal();
             }
         });
 
         // ---------------- SAVE GROUP + ADMIN MEMBERSHIP ----------------
 
-        createGroupForm.addEventListener("submit", async event => {
+        createGroupForm?.addEventListener("submit", async event => {
             event.preventDefault();
 
             const user = auth.currentUser;
 
             if (!user || !currentUser || user.uid !== currentUser.uid) {
-                showFormMessage("Your session expired. Please sign in again.", "error");
+                showFormMessage(
+                    "Your session expired. Please sign in again.",
+                    "error"
+                );
                 return;
             }
 
@@ -931,7 +975,6 @@
                     joinedAt: serverTimestamp()
                 });
 
-                // Both documents succeed or neither is written.
                 await batch.commit();
 
                 groupModal.hidden = true;
@@ -944,12 +987,12 @@
 
                 if (error.code === "permission-denied") {
                     showFormMessage(
-                        "Permission denied. Your Firestore rules must allow the group and admin membership batch.",
+                        "Permission denied. Check group and admin membership Firestore rules.",
                         "error"
                     );
                 } else {
                     showFormMessage(
-                        "Could not create the group. Check your connection and try again.",
+                        "Could not create group. Check your connection and try again.",
                         "error"
                     );
                 }
@@ -982,6 +1025,7 @@
             }
         );
     </script>
+
 </body>
 
 </html>
