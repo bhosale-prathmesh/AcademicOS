@@ -3,14 +3,493 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#FFFFFF">
     <title>AcademicOS</title>
+
+    <!-- Font Awesome 6 icons (requires internet access) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
+        referrerpolicy="no-referrer">
+
+    <style>
+        :root {
+            /* Theme tokens: change these to re-theme the whole app */
+            --background: #F4F6F9;
+            --surface: #FFFFFF;
+            --text: #14213D;
+            --muted: #5B6577;
+            --muted-strong: #3F4A5E;
+            --border: #D9DFE8;
+            --primary: #0E7C7B;
+            --primary-strong: #0A5F5E;
+            --primary-soft: rgba(14, 124, 123, 0.10);
+            --bar-bg: rgba(255, 255, 255, 0.94);
+            --shadow: 0 1px 2px rgba(20, 33, 61, 0.05), 0 4px 14px rgba(20, 33, 61, 0.04);
+
+            --topbar-h: 64px;
+            --sidebar-w: 96px;
+            --content-max: 1000px;
+        }
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+        }
+
+        html {
+            -webkit-text-size-adjust: 100%;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            min-height: 100dvh;
+            background: var(--background);
+            color: var(--text);
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+                "Segoe UI", Roboto, sans-serif;
+            overflow-x: hidden;
+        }
+
+        button,
+        a {
+            font: inherit;
+        }
+
+        button {
+            color: inherit;
+        }
+
+        /* ---------- Top bar ---------- */
+        .topbar {
+            position: fixed;
+            z-index: 30;
+            inset: 0 0 auto 0;
+            height: var(--topbar-h);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 0 max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left));
+            background: var(--bar-bg);
+            border-bottom: 1px solid var(--border);
+            -webkit-backdrop-filter: blur(14px);
+            backdrop-filter: blur(14px);
+        }
+
+        .brand {
+            display: inline-flex;
+            align-items: center;
+            gap: 11px;
+            min-width: 0;
+            color: var(--text);
+            text-decoration: none;
+            font-size: 1.1rem;
+            font-weight: 800;
+            letter-spacing: -0.04em;
+        }
+
+        .brand-mark {
+            display: grid;
+            place-items: center;
+            width: 34px;
+            height: 34px;
+            flex: 0 0 34px;
+            border-radius: 11px;
+            color: #fff;
+            background: var(--primary);
+            font-size: 1rem;
+        }
+
+        .profile-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 9px;
+            min-height: 42px;
+            padding: 6px 9px;
+            border: 1px solid var(--border);
+            border-radius: 13px;
+            background: var(--surface);
+            cursor: pointer;
+            transition: border-color 160ms ease;
+        }
+
+        .profile-button:hover {
+            border-color: var(--primary);
+        }
+
+        .profile-avatar {
+            display: grid;
+            place-items: center;
+            width: 27px;
+            height: 27px;
+            border-radius: 50%;
+            background: var(--primary-soft);
+            color: var(--primary-strong);
+        }
+
+        .profile-label,
+        .profile-button .fa-chevron-down {
+            display: none;
+        }
+
+        .profile-label {
+            font-size: 0.9rem;
+            font-weight: 650;
+        }
+
+        .profile-button .fa-chevron-down {
+            color: var(--muted);
+            font-size: 0.7rem;
+        }
+
+        /* ---------- Main content ---------- */
+        main {
+            width: min(100% - 32px, var(--content-max));
+            margin: 0 auto;
+            padding: calc(var(--topbar-h) + 24px) 0 calc(96px + env(safe-area-inset-bottom));
+        }
+
+        .welcome-card {
+            padding: clamp(20px, 4vw, 40px);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            background: var(--surface);
+            box-shadow: var(--shadow);
+        }
+
+        .eyebrow {
+            margin: 0 0 10px;
+            color: var(--primary-strong);
+            font-size: 0.75rem;
+            font-weight: 750;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: clamp(1.55rem, 5vw, 2.6rem);
+            line-height: 1.15;
+            letter-spacing: -0.04em;
+        }
+
+        .intro {
+            max-width: 62ch;
+            margin: 14px 0 0;
+            color: var(--muted-strong);
+            font-size: clamp(0.95rem, 2.2vw, 1.05rem);
+            line-height: 1.7;
+        }
+
+        .section-heading {
+            margin: 28px 0 14px;
+            font-size: 1.05rem;
+            font-weight: 750;
+        }
+
+        .placeholder-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 14px;
+        }
+
+        .placeholder-card {
+            min-height: 108px;
+            padding: 20px;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            background: var(--surface);
+            box-shadow: var(--shadow);
+        }
+
+        .placeholder-icon {
+            display: grid;
+            place-items: center;
+            width: 38px;
+            height: 38px;
+            margin-bottom: 13px;
+            border-radius: 12px;
+            color: var(--primary-strong);
+            background: var(--primary-soft);
+        }
+
+        .placeholder-card h3 {
+            margin: 0 0 6px;
+            font-size: 1rem;
+        }
+
+        .placeholder-card p {
+            margin: 0;
+            color: var(--muted);
+            font-size: 0.88rem;
+            line-height: 1.5;
+        }
+
+        /* ---------- Navigation (bottom on mobile) ---------- */
+        .app-nav {
+            position: fixed;
+            z-index: 20;
+            inset: auto 0 0 0;
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 4px;
+            padding: 8px max(10px, env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+            background: var(--bar-bg);
+            border-top: 1px solid var(--border);
+            -webkit-backdrop-filter: blur(14px);
+            backdrop-filter: blur(14px);
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            min-height: 58px;
+            padding: 7px 4px;
+            border: 1px solid transparent;
+            border-radius: 13px;
+            color: var(--muted);
+            background: transparent;
+            cursor: pointer;
+            transition: color 160ms ease, background 160ms ease;
+        }
+
+        .nav-item i {
+            font-size: 1.1rem;
+        }
+
+        .nav-item span {
+            font-size: 0.72rem;
+            font-weight: 650;
+        }
+
+        .nav-item:hover,
+        .nav-item:focus-visible {
+            color: var(--text);
+        }
+
+        .nav-item.active {
+            color: var(--primary-strong);
+            background: var(--primary-soft);
+            border-color: rgba(14, 124, 123, 0.22);
+        }
+
+        a:focus-visible,
+        button:focus-visible {
+            outline: 3px solid var(--primary);
+            outline-offset: 3px;
+        }
+
+        /* ---------- Toast ---------- */
+        .toast {
+            position: fixed;
+            z-index: 40;
+            left: 50%;
+            bottom: calc(92px + env(safe-area-inset-bottom));
+            transform: translateX(-50%);
+            max-width: calc(100% - 32px);
+            padding: 11px 15px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text);
+            background: var(--surface);
+            box-shadow: 0 10px 30px rgba(20, 33, 61, .16);
+            font-size: 0.9rem;
+            text-align: center;
+        }
+
+        [hidden] {
+            display: none !important;
+        }
+
+        /* ---------- Tablet and desktop ---------- */
+        @media (min-width: 640px) {
+            .placeholder-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (min-width: 760px) {
+            :root {
+                --topbar-h: 72px;
+            }
+
+            .brand {
+                font-size: 1.2rem;
+            }
+
+            .brand-mark {
+                width: 36px;
+                height: 36px;
+                flex-basis: 36px;
+            }
+
+            .profile-button {
+                padding: 7px 12px;
+            }
+
+            .profile-label,
+            .profile-button .fa-chevron-down {
+                display: inline;
+            }
+
+            /* Sidebar starts below the top bar so it never covers the brand */
+            .app-nav {
+                inset: var(--topbar-h) auto 0 0;
+                width: var(--sidebar-w);
+                display: flex;
+                flex-direction: column;
+                justify-content: flex-start;
+                gap: 10px;
+                padding: 20px 10px;
+                border-top: 0;
+                border-right: 1px solid var(--border);
+            }
+
+            .nav-item {
+                width: 100%;
+                min-height: 72px;
+            }
+
+            main {
+                width: min(100% - var(--sidebar-w) - 64px, var(--content-max));
+                margin-left: calc(var(--sidebar-w) + 32px);
+                margin-right: auto;
+                padding: calc(var(--topbar-h) + 32px) 0 48px;
+            }
+
+            .toast {
+                bottom: 24px;
+                left: calc(50% + var(--sidebar-w) / 2);
+            }
+        }
+
+        @media (min-width: 1200px) {
+            main {
+                margin-left: max(calc(var(--sidebar-w) + 32px), calc((100vw + var(--sidebar-w) - var(--content-max)) / 2));
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                transition: none !important;
+            }
+        }
+    </style>
 </head>
 
 <body>
-    <h1>AcademicOS</h1>
-    <p>All your academic tasks. One clear priority.</p>
-    <p>AI-powered academic workload prioritization.</p>
+    <header class="topbar">
+        <a class="brand" href="#home" aria-label="AcademicOS home" data-page="home">
+            <span class="brand-mark"><i class="fa-solid fa-layer-group" aria-hidden="true"></i></span>
+            <span>AcademicOS</span>
+        </a>
+
+        <button class="profile-button" id="profileButton" type="button" aria-label="Open profile">
+            <span class="profile-avatar"><i class="fa-solid fa-user" aria-hidden="true"></i></span>
+            <span class="profile-label">Profile</span>
+            <i class="fa-solid fa-chevron-down" aria-hidden="true"></i>
+        </button>
+    </header>
+
+    <main id="mainContent">
+        <section class="welcome-card" aria-labelledby="welcomeTitle">
+            <p class="eyebrow">Your academic workspace</p>
+            <h1 id="welcomeTitle">All your academic tasks.<br>One clear priority.</h1>
+            <p class="intro">
+                Manage your academic groups, tasks, and progress in one place. Your personalized
+                dashboard will appear here.
+            </p>
+        </section>
+
+        <h2 class="section-heading" id="sectionHeading">Your workspace</h2>
+        <section class="placeholder-grid" aria-label="Workspace overview">
+            <article class="placeholder-card">
+                <span class="placeholder-icon"><i class="fa-solid fa-list-check" aria-hidden="true"></i></span>
+                <h3>Task priorities</h3>
+                <p>Your upcoming tasks and priorities will appear here.</p>
+            </article>
+            <article class="placeholder-card">
+                <span class="placeholder-icon"><i class="fa-solid fa-people-group" aria-hidden="true"></i></span>
+                <h3>Your groups</h3>
+                <p>Access the academic groups you belong to.</p>
+            </article>
+        </section>
+    </main>
+
+    <nav class="app-nav" aria-label="Main navigation">
+        <button class="nav-item active" type="button" data-page="home" aria-current="page">
+            <i class="fa-solid fa-house" aria-hidden="true"></i><span>Home</span>
+        </button>
+        <button class="nav-item" type="button" data-page="groups">
+            <i class="fa-solid fa-people-group" aria-hidden="true"></i><span>Groups</span>
+        </button>
+        <button class="nav-item" type="button" data-page="progress">
+            <i class="fa-solid fa-chart-line" aria-hidden="true"></i><span>Progress</span>
+        </button>
+        <button class="nav-item" type="button" data-page="settings">
+            <i class="fa-solid fa-gear" aria-hidden="true"></i><span>Settings</span>
+        </button>
+    </nav>
+
+    <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+    <script>
+        const toast = document.getElementById("toast");
+        const sectionHeading = document.getElementById("sectionHeading");
+        const navItems = document.querySelectorAll(".nav-item");
+        let toastTimer;
+
+        const pageLabels = {
+            home: "Your workspace",
+            groups: "Your groups",
+            progress: "Your progress",
+            settings: "Settings"
+        };
+
+        function showToast(message) {
+            toast.textContent = message;
+            toast.hidden = false;
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => { toast.hidden = true; }, 2400);
+        }
+
+        function navigateTo(page) {
+            navItems.forEach((navItem) => {
+                const isActive = navItem.dataset.page === page;
+                navItem.classList.toggle("active", isActive);
+                if (isActive) {
+                    navItem.setAttribute("aria-current", "page");
+                } else {
+                    navItem.removeAttribute("aria-current");
+                }
+            });
+
+            sectionHeading.textContent = pageLabels[page] || pageLabels.home;
+
+            if (page !== "home") {
+                showToast((pageLabels[page] || "This page") + " is not available yet.");
+            }
+        }
+
+        document.querySelectorAll("[data-page]").forEach((item) => {
+            item.addEventListener("click", (event) => {
+                if (item.tagName === "A") {
+                    event.preventDefault();
+                }
+                navigateTo(item.dataset.page);
+            });
+        });
+
+        document.getElementById("profileButton").addEventListener("click", () => {
+            showToast("Profile menu will be available after sign-in is added.");
+        });
+    </script>
 </body>
 
 </html>
