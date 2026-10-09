@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#F4F6F9">
+    <title>Home | AcademicOS</title>
+
+    <style>
+        :root {
+            --bg: #F4F6F9;
+            --surface: #FFFFFF;
+            --text: #14213D;
+            --muted: #64748B;
+            --border: #D9DFE8;
+            --primary: #0E7C7B;
+            --primary-dark: #0A5F5E;
+            --soft: #E5F4F3;
+            --green-1: #D9F3E4;
+            --green-2: #A8E6BF;
+            --green-3: #55C982;
+            --green-4: #16834A;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 28px;
+            background: var(--bg);
+            color: var(--text);
+            font-family: Inter, Arial, sans-serif;
+        }
+
+        button,
+        input,
+        textarea {
+            font: inherit;
+        }
+
+        button {
+            cursor: pointer;
+        }
+
+        main {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding-bottom: 90px;
+        }
+
+        .heading {
+            margin-bottom: 24px;
+        }
+
+        h1 {
+            margin: 0 0 8px;
+            font-size: clamp(24px, 4vw, 30px);
+            letter-spacing: -0.6px;
+        }
+
+        h2 {
+            margin: 0;
+            font-size: 20px;
+        }
+
+        p {
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+        .panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 22px;
+            margin-bottom: 22px;
+            box-shadow: 0 3px 12px rgba(20, 33, 61, 0.025);
+        }
+
+        .panel-heading {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+
+        .count {
+            color: var(--primary);
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        /* Activity heatmap */
+        #heatmap-scroll {
+            overflow-x: auto;
+            padding-bottom: 8px;
+        }
+
+        #heatmap {
+            display: grid;
+            grid-template-rows: repeat(7, 13px);
+            grid-auto-columns: 13px;
+            grid-auto-flow: column;
+            gap: 4px;
+            width: max-content;
+        }
+
+        .day {
+            display: block;
+            width: 13px;
+            height: 13px;
+            padding: 0;
+            border: 0;
+            border-radius: 3px;
+            background: #EBEEF2;
+        }
+
+        .day[data-level="1"] {
+            background: var(--green-1);
+        }
+
+        .day[data-level="2"] {
+            background: var(--green-2);
+        }
+
+        .day[data-level="3"] {
+            background: var(--green-3);
+        }
+
+        .day[data-level="4"] {
+            background: var(--green-4);
+        }
+
+        .day.empty {
+            visibility: hidden;
+        }
+
+        .legend {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 5px;
+            margin-top: 15px;
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        /* Groups */
+        .groups-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 14px;
+        }
+
+        .group-card {
+            padding: 18px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: white;
+            transition: border-color .2s, transform .2s;
+        }
+
+        .group-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+        }
+
+        .group-card h3 {
+            margin: 0 0 8px;
+            font-size: 17px;
+            overflow-wrap: anywhere;
+        }
+
+        .group-description {
+            min-height: 42px;
+            margin: 0 0 14px;
+            font-size: 13px;
+            overflow-wrap: anywhere;
+        }
+
+        .group-meta {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .role-badge {
+            padding: 5px 9px;
+            border-radius: 20px;
+            color: #166534;
+            background: var(--green-1);
+            font-size: 11px;
+            font-weight: 800;
+        }
+
+        .group-id {
+            color: var(--muted);
+            font-size: 11px;
+        }
+
+        .group-message,
+        .message {
+            padding: 18px 4px;
+            color: var(--muted);
+            text-align: center;
+            font-size: 14px;
+        }
+
+        /* Completed tasks */
+        #task-list {
+            display: grid;
+            gap: 11px;
+        }
+
+        .task {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 14px;
+            border: 1px solid var(--border);
+            border-radius: 11px;
+        }
+
+        .check {
+            display: grid;
+            place-items: center;
+            width: 25px;
+            height: 25px;
+            flex: 0 0 25px;
+            border-radius: 50%;
+            color: var(--primary-dark);
+            background: var(--soft);
+            font-weight: 800;
+        }
+
+        .task-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .task-title {
+            font-size: 14px;
+            font-weight: 700;
+            overflow-wrap: anywhere;
+        }
+
+        .task-date {
+            margin-top: 6px;
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        /* Floating action button */
+        .fab {
+            position: fixed;
+            right: 28px;
+            bottom: 28px;
+            z-index: 50;
+            display: grid;
+            place-items: center;
+            width: 60px;
+            height: 60px;
+            border: 0;
+            border-radius: 50%;
+            color: white;
+            background: var(--primary);
+            font-size: 34px;
+            font-weight: 400;
+            line-height: 1;
+            box-shadow: 0 8px 24px rgba(14, 124, 123, .28);
+            transition: background .2s, transform .2s;
+        }
+
+        .fab:hover {
+            background: var(--primary-dark);
+            transform: translateY(-3px);
+        }
+
+        /* Create group modal */
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            display: grid;
+            place-items: center;
+            padding: 16px;
+            background: rgba(15, 23, 42, .56);
+        }
+
+        .modal-backdrop[hidden] {
+            display: none;
+        }
+
+        .modal {
+            width: min(100%, 450px);
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 25px;
+            border-radius: 17px;
+            background: white;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, .2);
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .modal-header p {
+            margin: 8px 0 0;
+            font-size: 13px;
+        }
+
+        .close-button {
+            width: 34px;
+            height: 34px;
+            flex: 0 0 34px;
+            border: 1px solid var(--border);
+            border-radius: 9px;
+            background: white;
+            font-size: 20px;
+        }
+
+        .field {
+            margin-top: 19px;
+        }
+
+        .field label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .field input,
+        .field textarea {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 9px;
+            outline: none;
+            background: white;
+            color: var(--text);
+        }
+
+        .field input:focus,
+        .field textarea:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--soft);
+        }
+
+        .field textarea {
+            min-height: 85px;
+            resize: vertical;
+        }
+
+        #formMessage {
+            min-height: 18px;
+            margin: 12px 0 0;
+            font-size: 13px;
+        }
+
+        #formMessage.error {
+            color: #B42318;
+        }
+
+        #formMessage.success {
+            color: #167347;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 18px;
+        }
+
+        .action-button {
+            padding: 11px 15px;
+            border: 1px solid var(--border);
+            border-radius: 9px;
+            background: white;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .action-button.primary {
+            border-color: var(--primary);
+            color: white;
+            background: var(--primary);
+        }
+
+        .action-button:disabled {
+            opacity: .6;
+            cursor: not-allowed;
+        }
+
+        .toast {
+            position: fixed;
+            z-index: 150;
+            left: 50%;
+            bottom: 25px;
+            transform: translateX(-50%);
+            width: max-content;
+            max-width: calc(100% - 32px);
+            padding: 12px 16px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: white;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, .12);
+            font-size: 13px;
+        }
+
+        .toast[hidden] {
+            display: none;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 16px;
+            }
+
+            .panel {
+                padding: 16px;
+            }
+
+            .fab {
+                right: 18px;
+                bottom: 22px;
+            }
+
+            .modal {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <main>
+        <header class="heading">
+            <h1>Activity Overview</h1>
+            <p>Track your consistency and celebrate your progress.</p>
+        </header>
+
+        <!-- Activity heatmap -->
+        <section class="panel">
+            <div class="panel-heading">
+                <h2>Learning activity</h2>
+                <span id="activity-total" class="count">Loading...</span>
+            </div>
+
+            <div id="heatmap-scroll">
+                <div id="heatmap" aria-label="Daily completed task activity"></div>
+            </div>
+
+            <div class="legend">
+                Less
+                <span class="day"></span>
+                <span class="day" data-level="1"></span>
+                <span class="day" data-level="2"></span>
+                <span class="day" data-level="3"></span>
+                <span class="day" data-level="4"></span>
+                More
+            </div>
+        </section>
+
+        <!-- Groups managed by this user -->
+        <section class="panel">
+            <div class="panel-heading">
+                <div>
+                    <h2>Your Groups</h2>
+                    <p style="margin:7px 0 0;font-size:13px">
+                        Academic groups you manage as an admin.
+                    </p>
+                </div>
+                <span id="groupCount" class="count">0 groups</span>
+            </div>
+
+            <div id="groupsList" class="groups-grid">
+                <p class="group-message">Checking your groups...</p>
+            </div>
+        </section>
+
+        <!-- Last 3 days -->
+        <section class="panel">
+            <div class="panel-heading">
+                <h2>Completed tasks</h2>
+                <span class="count">Last 3 days</span>
+            </div>
+
+            <div id="task-list">
+                <div class="message">Loading completed tasks...</div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Floating create button -->
+    <button class="fab" id="createGroupButton" type="button" aria-label="Create a group" title="Create group">+</button>
+
+    <!-- Create group modal -->
+    <div class="modal-backdrop" id="groupModal" hidden>
+        <section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+            <div class="modal-header">
+                <div>
+                    <h2 id="modalTitle">Create a group</h2>
+                    <p>Create a workspace for your class or project.</p>
+                </div>
+                <button class="close-button" id="closeGroupModal" type="button" aria-label="Close dialog">×</button>
+            </div>
+
+            <form id="createGroupForm">
+                <div class="field">
+                    <label for="groupName">Group name *</label>
+                    <input id="groupName" name="groupName" maxlength="80" required
+                        placeholder="e.g. Computer Engineering FY">
+                </div>
+
+                <div class="field">
+                    <label for="groupDescription">Description</label>
+                    <textarea id="groupDescription" name="description" maxlength="300"
+                        placeholder="What is this group for?"></textarea>
+                </div>
+
+                <p id="formMessage" role="status" aria-live="polite"></p>
+
+                <div class="modal-actions">
+                    <button class="action-button" id="cancelGroupButton" type="button">Cancel</button>
+
+                    <button class="action-button primary" id="saveGroupButton" type="submit">Create group</button>
+                </div>
+            </form>
+        </section>
+    </div>
+
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+    <script type="module">
+        import { auth, db } from "../core/firebase-config.js";
+
+        import { onAuthStateChanged } from
+            "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+
+        import {
+            collection,
+            query,
+            where,
+            getDocs,
+            doc,
+            writeBatch,
+            serverTimestamp
+        } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+
+        const $ = (id) => document.getElementById(id);
+
+        const heatmap = $("heatmap");
+        const activityTotal = $("activity-total");
+        const taskList = $("task-list");
+
+        const groupsList = $("groupsList");
+        const groupCount = $("groupCount");
+
+        const groupModal = $("groupModal");
+        const createGroupButton = $("createGroupButton");
+        const closeGroupModal = $("closeGroupModal");
+        const cancelGroupButton = $("cancelGroupButton");
+        const createGroupForm = $("createGroupForm");
+        const groupNameInput = $("groupName");
+        const groupDescriptionInput = $("groupDescription");
+        const saveGroupButton = $("saveGroupButton");
+        const formMessage = $("formMessage");
+        const toast = $("toast");
+
+        let currentUser = null;
+        let toastTimer = null;
+
+        // Use local calendar dates consistently.
+        function dateKey(date) {
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, "0");
+            const d = String(date.getDate()).padStart(2, "0");
+            return `${y}-${m}-${d}`;
+        }
+
+        function toDate(value) {
+            if (!value) return null;
+
+            if (typeof value.toDate === "function") {
+                return value.toDate();
+            }
+
+            const result = new Date(value);
+            return Number.isNaN(result.getTime()) ? null : result;
+        }
+
+        function showToast(message) {
+            toast.textContent = message;
+            toast.hidden = false;
+
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => {
+                toast.hidden = true;
+            }, 3000);
+        }
+
+        function showFormMessage(message, type = "") {
+            formMessage.textContent = message;
+            formMessage.className = type;
+        }
+
+        function showGroupMessage(message) {
+            groupsList.replaceChildren();
+
+            const element = document.createElement("p");
+            element.className = "group-message";
+            element.textContent = message;
+
+            groupsList.appendChild(element);
+        }
+
+        // ---------------- ACTIVITY HEATMAP ----------------
+
+        function renderHeatmap(tasks) {
+            heatmap.replaceChildren();
+
+            const counts = new Map();
+
+            for (const task of tasks) {
+                const completedDate = toDate(task.completedAt);
+                if (!completedDate) continue;
+
+                const key = dateKey(completedDate);
+                counts.set(key, (counts.get(key) || 0) + 1);
+            }
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            const firstVisibleDay = new Date(today);
+            firstVisibleDay.setDate(firstVisibleDay.getDate() - 364);
+
+            // Start at Sunday so the columns align like a contribution graph.
+            const gridStart = new Date(firstVisibleDay);
+            gridStart.setDate(gridStart.getDate() - gridStart.getDay());
+
+            let total = 0;
+
+            for (
+                const day = new Date(gridStart);
+                day <= today;
+                day.setDate(day.getDate() + 1)
+            ) {
+                const key = dateKey(day);
+                const count = counts.get(key) || 0;
+
+                if (day >= firstVisibleDay && day <= today) {
+                    total += count;
+                }
+
+                const cell = document.createElement("div");
+                cell.className = "day";
+
+                if (day < firstVisibleDay || day > today) {
+                    cell.classList.add("empty");
+                }
+
+                let level = 0;
+                if (count >= 1) level = 1;
+                if (count >= 2) level = 2;
+                if (count >= 4) level = 3;
+                if (count >= 6) level = 4;
+
+                cell.dataset.level = String(level);
+                cell.title = `${count} completed task(s) on ${key}`;
+                cell.setAttribute("aria-label", cell.title);
+
+                heatmap.appendChild(cell);
+            }
+
+            activityTotal.textContent = `${total} completions`;
+        }
+
+        // ---------------- RECENT COMPLETED TASKS ----------------
+
+        function renderRecentTasks(tasks) {
+            taskList.replaceChildren();
+
+            const now = new Date();
+            const today = new Date(now);
+            today.setHours(0, 0, 0, 0);
+
+            const cutoff = new Date(today);
+            cutoff.setDate(cutoff.getDate() - 2);
+
+            const recent = tasks
+                .map(task => ({
+                    ...task,
+                    completionDate: toDate(task.completedAt)
+                }))
+                .filter(task =>
+                    task.completionDate &&
+                    task.completionDate >= cutoff &&
+                    task.completionDate <= now
+                )
+                .sort((a, b) => b.completionDate - a.completionDate);
+
+            if (recent.length === 0) {
+                const empty = document.createElement("div");
+                empty.className = "empty-state";
+                empty.textContent =
+                    "No completed tasks in the last 3 days yet. Keep going!";
+
+                taskList.appendChild(empty);
+                return;
+            }
+
+            for (const task of recent) {
+                const card = document.createElement("article");
+                card.className = "task";
+
+                const check = document.createElement("span");
+                check.className = "check";
+                check.textContent = "✓";
+                check.setAttribute("aria-hidden", "true");
+
+                const content = document.createElement("div");
+                content.className = "task-content";
+
+                const title = document.createElement("div");
+                title.className = "task-title";
+                title.textContent = task.title || "Untitled task";
+
+                const date = document.createElement("div");
+                date.className = "task-date";
+                date.textContent = task.completionDate.toLocaleString();
+
+                content.append(title, date);
+                card.append(check, content);
+                taskList.appendChild(card);
+            }
+        }
+
+        async function loadActivity(user) {
+            try {
+                const tasksRef = collection(
+                    db, "users", user.uid, "personalTasks"
+                );
+
+                const snapshot = await getDocs(tasksRef);
+
+                const completedTasks = snapshot.docs
+                    .map(item => item.data())
+                    .filter(task => task.status === "completed");
+
+                renderHeatmap(completedTasks);
+                renderRecentTasks(completedTasks);
+            } catch (error) {
+                console.error("Activity loading failed:", error);
+
+                activityTotal.textContent = "Unavailable";
+                taskList.replaceChildren();
+
+                const message = document.createElement("div");
+                message.className = "message";
+                message.textContent =
+                    "Unable to load tasks. Check Firestore rules and task data.";
+
+                taskList.appendChild(message);
+            }
+        }
+
+        // ---------------- ADMIN GROUPS ----------------
+
+        function renderGroups(groups) {
+            groupsList.replaceChildren();
+
+            groupCount.textContent =
+                `${groups.length} group${groups.length === 1 ? "" : "s"}`;
+
+            if (groups.length === 0) {
+                showGroupMessage(
+                    "No groups created yet. Click + to create your first group."
+                );
+                return;
+            }
+
+            for (const group of groups) {
+                const card = document.createElement("article");
+                card.className = "group-card";
+
+                const title = document.createElement("h3");
+                title.textContent = group.name || "Untitled group";
+
+                const description = document.createElement("p");
+                description.className = "group-description";
+                description.textContent =
+                    group.description || "No description added.";
+
+                const meta = document.createElement("div");
+                meta.className = "group-meta";
+
+                const role = document.createElement("span");
+                role.className = "role-badge";
+                role.textContent = "ADMIN";
+
+                const id = document.createElement("span");
+                id.className = "group-id";
+                id.textContent = `ID: ${group.id.slice(0, 8)}`;
+
+                meta.append(role, id);
+                card.append(title, description, meta);
+                groupsList.appendChild(card);
+            }
+        }
+
+        async function loadAdminGroups(user) {
+            showGroupMessage("Loading your groups...");
+
+            try {
+                // This query displays groups created by the signed-in user.
+                const groupsQuery = query(
+                    collection(db, "groups"),
+                    where("createdBy", "==", user.uid)
+                );
+
+                const snapshot = await getDocs(groupsQuery);
+
+                const groups = snapshot.docs.map(item => ({
+                    id: item.id,
+                    ...item.data()
+                }));
+
+                renderGroups(groups);
+            } catch (error) {
+                console.error("Group loading failed:", error);
+                groupCount.textContent = "Unavailable";
+
+                showGroupMessage(
+                    "Unable to load groups. Check your Firestore security rules."
+                );
+            }
+        }
+
+        // ---------------- CREATE GROUP MODAL ----------------
+
+        function openGroupModal() {
+            createGroupForm.reset();
+            showFormMessage("");
+            groupModal.hidden = false;
+            groupNameInput.focus();
+        }
+
+        function closeModal() {
+            groupModal.hidden = true;
+            createGroupButton.focus();
+        }
+
+        createGroupButton.addEventListener("click", openGroupModal);
+        closeGroupModal.addEventListener("click", closeModal);
+        cancelGroupButton.addEventListener("click", closeModal);
+
+        groupModal.addEventListener("click", event => {
+            if (event.target === groupModal) {
+                closeModal();
+            }
+        });
+
+        document.addEventListener("keydown", event => {
+            if (event.key === "Escape" && !groupModal.hidden) {
+                closeModal();
+            }
+        });
+
+        // ---------------- SAVE GROUP + ADMIN MEMBERSHIP ----------------
+
+        createGroupForm.addEventListener("submit", async event => {
+            event.preventDefault();
+
+            const user = auth.currentUser;
+
+            if (!user || !currentUser || user.uid !== currentUser.uid) {
+                showFormMessage("Your session expired. Please sign in again.", "error");
+                return;
+            }
+
+            const name = groupNameInput.value.trim();
+            const description = groupDescriptionInput.value.trim();
+
+            if (!name) {
+                showFormMessage("Please enter a group name.", "error");
+                groupNameInput.focus();
+                return;
+            }
+
+            saveGroupButton.disabled = true;
+            saveGroupButton.textContent = "Creating...";
+            showFormMessage("");
+
+            try {
+                const groupRef = doc(collection(db, "groups"));
+
+                const memberRef = doc(
+                    db,
+                    "groups",
+                    groupRef.id,
+                    "members",
+                    user.uid
+                );
+
+                const batch = writeBatch(db);
+
+                batch.set(groupRef, {
+                    name,
+                    description,
+                    createdBy: user.uid,
+                    createdAt: serverTimestamp()
+                });
+
+                batch.set(memberRef, {
+                    uid: user.uid,
+                    role: "admin",
+                    joinedAt: serverTimestamp()
+                });
+
+                // Both documents succeed or neither is written.
+                await batch.commit();
+
+                groupModal.hidden = true;
+                createGroupForm.reset();
+
+                await loadAdminGroups(user);
+                showToast("Group created successfully!");
+            } catch (error) {
+                console.error("Group creation failed:", error);
+
+                if (error.code === "permission-denied") {
+                    showFormMessage(
+                        "Permission denied. Your Firestore rules must allow the group and admin membership batch.",
+                        "error"
+                    );
+                } else {
+                    showFormMessage(
+                        "Could not create the group. Check your connection and try again.",
+                        "error"
+                    );
+                }
+            } finally {
+                saveGroupButton.disabled = false;
+                saveGroupButton.textContent = "Create group";
+            }
+        });
+
+        // ---------------- AUTHENTICATION ----------------
+
+        onAuthStateChanged(
+            auth,
+            async user => {
+                if (!user) {
+                    window.location.replace("../main/account.html");
+                    return;
+                }
+
+                currentUser = user;
+
+                await Promise.all([
+                    loadActivity(user),
+                    loadAdminGroups(user)
+                ]);
+            },
+            error => {
+                console.error("Authentication check failed:", error);
+                window.location.replace("../main/account.html");
+            }
+        );
+    </script>
+</body>
+
+</html>

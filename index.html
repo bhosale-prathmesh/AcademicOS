@@ -368,6 +368,33 @@
                 transition: none !important;
             }
         }
+        #mainContent {
+  width: min(100% - 32px, var(--content-max));
+  margin: 0 auto;
+  padding: calc(var(--topbar-h) + 16px) 0
+           calc(96px + env(safe-area-inset-bottom));
+}
+
+#pageFrame {
+  display: block;
+  width: 100%;
+  min-height: 850px;
+  height: calc(100dvh - var(--topbar-h) - 32px);
+  border: 0;
+  background: transparent;
+}
+
+@media (min-width: 760px) {
+  #mainContent {
+    width: calc(100% - var(--sidebar-w) - 64px);
+    margin-left: calc(var(--sidebar-w) + 32px);
+    padding: calc(var(--topbar-h) + 16px) 0 32px;
+  }
+
+  #pageFrame {
+    height: calc(100dvh - var(--topbar-h) - 32px);
+  }
+}
     </style>
 </head>
 
@@ -392,35 +419,9 @@
     </header>
 
     <main id="mainContent">
-        <section class="welcome-card" aria-labelledby="welcomeTitle">
-            <p class="eyebrow">Your academic workspace</p>
-            <h1 id="welcomeTitle">All your academic tasks.<br>One clear priority.</h1>
-            <p class="intro">
-                Manage your academic groups, tasks, and progress in one place.
-                Your personalized dashboard will appear here.
-            </p>
-        </section>
-
-        <h2 class="section-heading" id="sectionHeading">Your workspace</h2>
-
-        <section class="placeholder-grid" aria-label="Workspace overview">
-            <article class="placeholder-card">
-                <span class="placeholder-icon">
-                    <i class="fa-solid fa-list-check" aria-hidden="true"></i>
-                </span>
-                <h3>Task priorities</h3>
-                <p>Your upcoming tasks and priorities will appear here.</p>
-            </article>
-
-            <article class="placeholder-card">
-                <span class="placeholder-icon">
-                    <i class="fa-solid fa-people-group" aria-hidden="true"></i>
-                </span>
-                <h3>Your groups</h3>
-                <p>Access the academic groups you belong to.</p>
-            </article>
-        </section>
+        <iframe id="pageFrame" title="AcademicOS page" src="./dynamic/home.html" loading="eager"></iframe>
     </main>
+
 
     <nav class="app-nav" aria-label="Main navigation">
         <button class="nav-item active" type="button" data-page="home" aria-current="page">
@@ -448,108 +449,66 @@
 
     <script type="module">
         import { auth } from "./core/firebase-config.js";
+        import { onAuthStateChanged } from
+            "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
 
-        import {
-            onAuthStateChanged
-        } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+        import { initPageLoader } from "./dynamic/pageLoader.js";
 
         const profileButton = document.getElementById("profileButton");
         const profilePhoto = document.getElementById("googleProfilePhoto");
         const profileFallback = document.getElementById("profileFallback");
-        const toast = document.getElementById("toast");
-        const sectionHeading = document.getElementById("sectionHeading");
-        const navItems = document.querySelectorAll(".nav-item");
 
-        let toastTimer;
-        let authResolved = false;
+        let pageLoaderInitialized = false;
 
-        const pageLabels = {
-            home: "Your workspace",
-            groups: "Your groups",
-            progress: "Your progress",
-            settings: "Settings"
-        };
+        function showProfile(user) {
+            profileButton.hidden = false;
 
-        function showToast(message) {
-            toast.textContent = message;
-            toast.hidden = false;
-            clearTimeout(toastTimer);
-            toastTimer = setTimeout(() => {
-                toast.hidden = true;
-            }, 2400);
-        }
+            if (user.photoURL) {
+                profilePhoto.onload = () => {
+                    profilePhoto.hidden = false;
+                    profileFallback.hidden = true;
+                };
 
-        function navigateTo(page) {
-            navItems.forEach((item) => {
-                const active = item.dataset.page === page;
-                item.classList.toggle("active", active);
+                profilePhoto.onerror = () => {
+                    profilePhoto.hidden = true;
+                    profileFallback.hidden = false;
+                };
 
-                if (active) {
-                    item.setAttribute("aria-current", "page");
-                } else {
-                    item.removeAttribute("aria-current");
-                }
-            });
-
-            sectionHeading.textContent = pageLabels[page] || pageLabels.home;
-
-            if (page !== "home") {
-                showToast((pageLabels[page] || "This page") + " is not available yet.");
+                profilePhoto.src = user.photoURL;
+            } else {
+                profilePhoto.hidden = true;
+                profileFallback.hidden = false;
             }
         }
 
-        navItems.forEach((item) => {
-            item.addEventListener("click", () => {
-                navigateTo(item.dataset.page);
-            });
-        });
-
-        // One authentication listener: protect the page and load the Google photo.
         onAuthStateChanged(
             auth,
             (user) => {
-                authResolved = true;
-
                 if (!user) {
-                    // No authenticated Firebase user: redirect to account page.
                     window.location.replace("./main/account.html");
                     return;
                 }
 
-                // User is signed in: reveal the protected dashboard.
-                document.body.classList.remove("auth-pending");
-                profileButton.hidden = false;
+                showProfile(user);
 
-                if (user.photoURL) {
-                    profilePhoto.onload = () => {
-                        profilePhoto.hidden = false;
-                        profileFallback.hidden = true;
-                    };
-
-                    profilePhoto.onerror = () => {
-                        profilePhoto.hidden = true;
-                        profileFallback.hidden = false;
-                    };
-
-                    profilePhoto.src = user.photoURL;
-                } else {
-                    profilePhoto.hidden = true;
-                    profileFallback.hidden = false;
+                if (!pageLoaderInitialized) {
+                    initPageLoader();
+                    pageLoaderInitialized = true;
                 }
+
+                document.body.classList.remove("auth-pending");
             },
             (error) => {
-                console.error("Firebase authentication check failed:", error);
-
-                // Fail closed: do not show the protected dashboard if auth cannot be checked.
+                console.error("Authentication error:", error);
                 window.location.replace("./main/account.html");
             }
         );
 
-        // Only one profile click handler.
         profileButton.addEventListener("click", () => {
             window.location.href = "./main/profile.html";
         });
     </script>
+
 </body>
 
 </html>
