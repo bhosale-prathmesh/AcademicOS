@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Group | AcademicOS</title>
-
+    <link rel="stylesheet" href="../css/common.css">
     <style>
         :root {
             --bg: #F4F6F9;
@@ -15,8 +15,6 @@
             --border: #D9DFE8;
             --primary: #0E7C7B;
             --soft: #E5F4F3;
-            --green: #167347;
-            --orange: #9A3412;
         }
 
         * {
@@ -31,16 +29,6 @@
             font-family: Inter, Arial, sans-serif;
         }
 
-        button,
-        input,
-        textarea {
-            font: inherit;
-        }
-
-        button {
-            cursor: pointer;
-        }
-
         main {
             max-width: 950px;
             margin: auto;
@@ -53,7 +41,6 @@
             color: var(--primary);
             text-decoration: none;
             font-weight: 700;
-            font-size: 14px;
         }
 
         .panel {
@@ -87,11 +74,10 @@
             color: var(--primary);
             font-size: 12px;
             font-weight: 700;
-            overflow-wrap: anywhere;
         }
 
         .field {
-            margin-top: 18px;
+            margin-top: 16px;
         }
 
         label {
@@ -102,113 +88,98 @@
         }
 
         input,
-        textarea {
-            display: block;
+        textarea,
+        select {
             width: 100%;
             padding: 12px;
             border: 1px solid var(--border);
             border-radius: 9px;
-            background: white;
-            color: var(--text);
+            font: inherit;
         }
 
         textarea {
-            min-height: 90px;
+            min-height: 80px;
             resize: vertical;
         }
 
-        input:focus,
-        textarea:focus {
-            outline: 2px solid var(--soft);
-            border-color: var(--primary);
-        }
-
         .primary-button {
-            margin-top: 18px;
+            margin-top: 16px;
             padding: 12px 18px;
             border: 0;
             border-radius: 9px;
             background: var(--primary);
             color: white;
             font-weight: 700;
-        }
-
-        .primary-button:disabled {
-            opacity: .6;
-            cursor: not-allowed;
-        }
-
-        .secondary-button {
-            padding: 8px 14px;
-            border: 1px solid var(--border);
-            border-radius: 9px;
-            background: white;
-            color: var(--text);
-            font-size: 13px;
-            font-weight: 650;
-        }
-
-        .secondary-button.done {
-            border-color: #86EFAC;
-            background: #DCFCE7;
-            color: var(--green);
+            cursor: pointer;
         }
 
         .task-list {
             display: grid;
-            gap: 12px;
-            margin-top: 20px;
+            gap: 14px;
+            margin-top: 16px;
         }
 
         .task-card {
-            padding: 16px;
             border: 1px solid var(--border);
             border-radius: 11px;
+            padding: 16px;
             background: white;
         }
 
-        .task-head {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            gap: 12px;
-        }
-
         .task-card h3 {
-            margin: 0 0 7px;
+            margin: 0 0 8px;
             font-size: 16px;
-            overflow-wrap: anywhere;
         }
 
-        .task-card p {
-            margin: 5px 0;
-            font-size: 13px;
-            overflow-wrap: anywhere;
+        .row-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
         }
 
-        .badge {
-            flex-shrink: 0;
-            padding: 5px 9px;
+        .chip {
+            padding: 6px 10px;
             border-radius: 20px;
-            background: #FFEDD5;
-            color: var(--orange);
+            background: var(--soft);
+            color: var(--primary);
             font-size: 11px;
             font-weight: 700;
         }
 
-        .badge.completed {
-            background: #DCFCE7;
-            color: var(--green);
+        button.secondary {
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            font-size: 13px;
         }
 
         .message {
-            padding: 14px 0;
             color: var(--muted);
             font-size: 14px;
+            padding: 12px 0;
         }
 
-        #notice {
-            min-height: 18px;
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        th,
+        td {
+            border-bottom: 1px solid var(--border);
+            padding: 10px;
+            text-align: left;
+        }
+
+        .review-box {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 8px;
+            background: #F8FAFC;
             font-size: 13px;
         }
 
@@ -219,55 +190,6 @@
         .success {
             color: #167347;
         }
-
-        .progress-table-wrap {
-            overflow-x: auto;
-            margin-top: 16px;
-        }
-
-        table.progress-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 13px;
-        }
-
-        .progress-table th,
-        .progress-table td {
-            padding: 10px 12px;
-            border-bottom: 1px solid var(--border);
-            text-align: left;
-        }
-
-        .progress-table th {
-            color: var(--muted);
-            font-weight: 650;
-        }
-
-        .dot {
-            display: inline-block;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: #FDBA74;
-        }
-
-        .dot.done {
-            background: #22C55E;
-        }
-
-        @media (max-width: 600px) {
-            body {
-                padding: 16px;
-            }
-
-            .panel {
-                padding: 17px;
-            }
-
-            h1 {
-                font-size: 24px;
-            }
-        }
     </style>
 </head>
 
@@ -277,517 +199,391 @@
 
         <section class="panel">
             <h1 id="groupName">Loading group...</h1>
-            <p id="groupDescription">Please wait while group details load.</p>
+            <p id="groupDescription"></p>
             <span class="group-id" id="groupIdLabel"></span>
             <p id="roleMessage"></p>
         </section>
 
         <section class="panel" id="createTaskPanel" hidden>
-            <h2>Create an assignment</h2>
-            <p>Assign work to everyone in this group. Members mark assignments complete on their own account.</p>
-
+            <h2>Create assignment</h2>
             <form id="taskForm">
                 <div class="field">
-                    <label for="taskTitle">Task title *</label>
-                    <input id="taskTitle" maxlength="200" required placeholder="e.g. Complete HTML assignment">
+                    <label for="taskTitle">Title *</label>
+                    <input id="taskTitle" maxlength="200" required>
                 </div>
-
                 <div class="field">
                     <label for="taskDescription">Instructions</label>
-                    <textarea id="taskDescription" maxlength="2000"
-                        placeholder="Explain what members need to do"></textarea>
+                    <textarea id="taskDescription" maxlength="2000"></textarea>
                 </div>
-
                 <div class="field">
-                    <label for="taskDueDate">Deadline (optional)</label>
+                    <label for="taskDueDate">Deadline</label>
                     <input id="taskDueDate" type="datetime-local">
                 </div>
-
-                <p id="notice" role="status" aria-live="polite"></p>
-
-                <button class="primary-button" id="createTaskButton" type="submit">
-                    Create assignment
-                </button>
+                <p id="notice" role="status"></p>
+                <button class="primary-button" id="createTaskButton" type="submit">Create assignment</button>
             </form>
         </section>
 
         <section class="panel">
-            <h2>Group assignments</h2>
-            <p>Mark your work complete when you finish. Admins can review member progress below.</p>
+            <h2>Assignments</h2>
             <div id="taskList" class="task-list">
-                <div class="message">Loading assignments...</div>
+                <div class="message">Loading...</div>
             </div>
         </section>
 
-        <section class="panel" id="memberProgressPanel" hidden>
-            <h2>Member progress</h2>
-            <p>Completion status for each member on every assignment.</p>
-            <div id="memberProgress" class="progress-table-wrap">
-                <div class="message">Loading member progress...</div>
-            </div>
+        <section class="panel" id="staffPanel" hidden>
+            <h2>Student progress overview</h2>
+            <div id="staffProgress"></div>
         </section>
     </main>
 
     <script type="module">
         import { auth, db } from "../core/firebase-config.js";
-
-        import {
-            onAuthStateChanged
-        } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
-
+        import { onAuthStateChanged } from
+            "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
         import {
             collection,
             doc,
             getDoc,
             getDocs,
+            updateDoc,
             query,
             orderBy,
             limit,
             writeBatch,
             serverTimestamp,
-            Timestamp,
-            setDoc
+            Timestamp
         } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
 
-        const $ = id => document.getElementById(id);
+        import { getGroupMembership } from "../engine/groupEngine.js";
+        import {
+            canManageAssignments,
+            roleLabel,
+            formatDateTime
+        } from "../engine/dataEngine.js";
+        import {
+            getTaskProgress,
+            setTaskProgress,
+            getSubmission,
+            submitWork,
+            reviewSubmission,
+            loadMemberProgressMatrix
+        } from "../engine/progressEngine.js";
+        import { showToast } from "../engine/uiEngine.js";
 
         const params = new URLSearchParams(window.location.search);
         const groupId = params.get("groupId");
 
-        const groupName = $("groupName");
-        const groupDescription = $("groupDescription");
-        const groupIdLabel = $("groupIdLabel");
-        const roleMessage = $("roleMessage");
-        const createTaskPanel = $("createTaskPanel");
-        const memberProgressPanel = $("memberProgressPanel");
-        const memberProgress = $("memberProgress");
-        const taskForm = $("taskForm");
-        const taskTitle = $("taskTitle");
-        const taskDescription = $("taskDescription");
-        const taskDueDate = $("taskDueDate");
-        const taskList = $("taskList");
-        const notice = $("notice");
-        const createTaskButton = $("createTaskButton");
-
+        const $ = id => document.getElementById(id);
         let currentUser = null;
         let currentRole = null;
         let cachedTasks = [];
-        let cachedMembers = [];
+        let cachedStudents = [];
+        const memberNames = new Map();
 
-        function normalizeRole(role) {
-            if (role === "teacher") return "admin";
-            if (role === "student") return "member";
-            return role === "admin" ? "admin" : "member";
+        function isStaff() {
+            return canManageAssignments(currentRole);
         }
 
-        function isAdmin() {
-            return normalizeRole(currentRole) === "admin";
-        }
-
-        function showNotice(message, type = "") {
-            notice.textContent = message;
-            notice.className = type;
-        }
-
-        function showTaskMessage(message) {
-            taskList.replaceChildren();
-            const element = document.createElement("div");
-            element.className = "message";
-            element.textContent = message;
-            taskList.appendChild(element);
-        }
-
-        function formatDate(value) {
-            if (!value) return "No deadline";
-
-            const date = typeof value.toDate === "function"
-                ? value.toDate()
-                : new Date(value);
-
-            return Number.isNaN(date.getTime())
-                ? "No deadline"
-                : date.toLocaleString();
-        }
-
-        async function fetchMemberProfiles(members) {
-            const profiles = new Map();
-
-            await Promise.all(members.map(async member => {
-                try {
-                    const snap = await getDoc(doc(db, "users", member.uid));
-                    profiles.set(member.uid, snap.exists()
-                        ? (snap.data().name || member.uid.slice(0, 8))
-                        : member.uid.slice(0, 8));
-                } catch {
-                    profiles.set(member.uid, member.uid.slice(0, 8));
-                }
-            }));
-
-            return profiles;
-        }
-
-        async function loadCompletionsForTask(taskId) {
-            const snap = await getDocs(
-                collection(db, "groups", groupId, "tasks", taskId, "completions")
-            );
-
-            const map = new Map();
-            for (const item of snap.docs) {
-                map.set(item.id, item.data());
-            }
-            return map;
-        }
-
-        async function toggleMyCompletion(taskId, currentlyCompleted) {
-            const ref = doc(
-                db, "groups", groupId, "tasks", taskId,
-                "completions", currentUser.uid
-            );
-
-            if (currentlyCompleted) {
-                await setDoc(ref, {
-                    status: "pending",
-                    updatedAt: serverTimestamp(),
-                    completedAt: null
-                });
-            } else {
-                await setDoc(ref, {
-                    status: "completed",
-                    updatedAt: serverTimestamp(),
-                    completedAt: serverTimestamp()
-                });
-            }
-        }
-
-        function renderMemberProgressTable(tasks, members, completionMaps, nameMap) {
-            memberProgress.replaceChildren();
-
-            if (!tasks.length) {
-                memberProgress.innerHTML =
-                    '<div class="message">Create assignments to track member progress.</div>';
-                return;
-            }
-
-            if (!members.length) {
-                memberProgress.innerHTML =
-                    '<div class="message">No members in this group yet.</div>';
-                return;
-            }
-
-            const table = document.createElement("table");
-            table.className = "progress-table";
-
-            const thead = document.createElement("thead");
-            const headRow = document.createElement("tr");
-            const assignmentHeader = document.createElement("th");
-            assignmentHeader.textContent = "Assignment";
-            headRow.appendChild(assignmentHeader);
-
-            for (const member of members) {
-                const th = document.createElement("th");
-                th.textContent = nameMap.get(member.uid) || "Member";
-                headRow.appendChild(th);
-            }
-
-            thead.appendChild(headRow);
-            table.appendChild(thead);
-
-            const tbody = document.createElement("tbody");
-
-            for (const task of tasks) {
-                const row = document.createElement("tr");
-                const titleCell = document.createElement("td");
-                titleCell.textContent = task.title || "Untitled";
-                row.appendChild(titleCell);
-
-                const completions = completionMaps.get(task.id) || new Map();
-
-                for (const member of members) {
-                    const cell = document.createElement("td");
-                    const data = completions.get(member.uid);
-                    const done = data?.status === "completed";
-
-                    const dot = document.createElement("span");
-                    dot.className = done ? "dot done" : "dot";
-                    dot.title = done ? "Completed" : "Pending";
-                    dot.setAttribute("aria-label", dot.title);
-
-                    cell.appendChild(dot);
-                    row.appendChild(cell);
-                }
-
-                tbody.appendChild(row);
-            }
-
-            table.appendChild(tbody);
-            memberProgress.appendChild(table);
-        }
-
-        async function refreshMemberProgress() {
-            if (!isAdmin() || !cachedTasks.length) {
-                if (isAdmin()) {
-                    renderMemberProgressTable([], cachedMembers, new Map(), new Map());
-                }
-                return;
-            }
-
-            const completionMaps = new Map();
-
-            for (const task of cachedTasks) {
-                completionMaps.set(task.id, await loadCompletionsForTask(task.id));
-            }
-
-            const nameMap = await fetchMemberProfiles(cachedMembers);
-            renderMemberProgressTable(
-                cachedTasks, cachedMembers, completionMaps, nameMap
-            );
-        }
-
-        async function renderTasks(tasks) {
-            if (!tasks.length) {
-                showTaskMessage("No assignments yet.");
-                return;
-            }
-
-            taskList.replaceChildren();
-
-            for (const task of tasks) {
-                const completions = await loadCompletionsForTask(task.id);
-                const mine = completions.get(currentUser.uid);
-                const completed = mine?.status === "completed";
-
-                const card = document.createElement("article");
-                card.className = "task-card";
-
-                const head = document.createElement("div");
-                head.className = "task-head";
-
-                const left = document.createElement("div");
-
-                const title = document.createElement("h3");
-                title.textContent = task.title || "Untitled assignment";
-
-                const description = document.createElement("p");
-                description.textContent =
-                    task.description || "No additional instructions.";
-
-                const deadline = document.createElement("p");
-                deadline.textContent = `Deadline: ${formatDate(task.dueDate)}`;
-
-                left.append(title, description, deadline);
-
-                const status = document.createElement("span");
-                status.className = `badge${completed ? " completed" : ""}`;
-                status.textContent = completed ? "Completed" : "Pending";
-
-                head.append(left, status);
-
-                const toggleBtn = document.createElement("button");
-                toggleBtn.type = "button";
-                toggleBtn.className = `secondary-button${completed ? " done" : ""}`;
-                toggleBtn.textContent = completed
-                    ? "Mark as incomplete"
-                    : "Mark as complete";
-
-                toggleBtn.addEventListener("click", async () => {
-                    toggleBtn.disabled = true;
-                    try {
-                        await toggleMyCompletion(task.id, completed);
-                        await loadTasks();
-                        if (isAdmin()) {
-                            await refreshMemberProgress();
-                        }
-                    } catch (error) {
-                        console.error("Completion update failed:", error);
-                        alert("Could not update completion. Check Firestore rules.");
-                    } finally {
-                        toggleBtn.disabled = false;
-                    }
-                });
-
-                card.append(head, toggleBtn);
-                taskList.appendChild(card);
-            }
+        async function loadGroupMeta(groupSnap) {
+            $("groupName").textContent = groupSnap.data().name || "Untitled group";
+            $("groupDescription").textContent =
+                groupSnap.data().description || "No description.";
+            $("groupIdLabel").textContent = `Group ID: ${groupId}`;
+            $("roleMessage").textContent = `Your role: ${roleLabel(currentRole)}`;
+            $("createTaskPanel").hidden = !isStaff();
+            $("staffPanel").hidden = !isStaff();
         }
 
         async function loadMembers() {
-            const snap = await getDocs(
-                collection(db, "groups", groupId, "members")
+            const snap = await getDocs(collection(db, "groups", groupId, "members"));
+            const members = snap.docs.map(item => ({ uid: item.id, ...item.data() }));
+
+            memberNames.clear();
+            for (const member of members) {
+                if (member.displayName) memberNames.set(member.uid, member.displayName);
+            }
+
+            cachedStudents = members.filter(member => member.role === "student");
+        }
+
+        // Names come from the members documents (users/{uid} is private to each user).
+        function memberName(uid) {
+            return memberNames.get(uid) || `Student ${uid.slice(0, 6)}`;
+        }
+
+        // Older members were saved without a name; let them add it for themselves.
+        async function backfillOwnName(membership) {
+            if (membership.displayName) return;
+            const name = (currentUser.displayName ||
+                (currentUser.email || "").split("@")[0] || "").trim().slice(0, 60);
+            if (!name) return;
+            try {
+                await updateDoc(
+                    doc(db, "groups", groupId, "members", currentUser.uid),
+                    { displayName: name }
+                );
+            } catch (error) {
+                console.warn("Could not save display name:", error);
+            }
+        }
+
+        async function renderStaffTable() {
+            const container = $("staffProgress");
+            container.replaceChildren();
+
+            if (!cachedTasks.length) {
+                container.innerHTML = '<p class="message">No assignments yet.</p>';
+                return;
+            }
+
+            const matrix = await loadMemberProgressMatrix(
+                groupId,
+                cachedTasks.map(task => task.id),
+                cachedStudents.map(student => student.uid)
             );
 
-            cachedMembers = snap.docs.map(item => ({
-                uid: item.id,
-                ...item.data()
-            }));
+            const table = document.createElement("table");
+            const head = document.createElement("tr");
+            head.innerHTML = "<th>Assignment</th>";
+            for (const student of cachedStudents) {
+                const th = document.createElement("th");
+                th.textContent = memberName(student.uid);
+                head.appendChild(th);
+            }
+            table.appendChild(document.createElement("thead")).appendChild(head);
 
-            cachedMembers.sort((a, b) => {
-                const aAdmin = normalizeRole(a.role) === "admin" ? 0 : 1;
-                const bAdmin = normalizeRole(b.role) === "admin" ? 0 : 1;
-                return aAdmin - bAdmin;
+            const body = document.createElement("tbody");
+            for (const task of cachedTasks) {
+                const row = document.createElement("tr");
+                const title = document.createElement("td");
+                title.textContent = task.title;
+                row.appendChild(title);
+
+                const rowMap = matrix.get(task.id) || new Map();
+                for (const student of cachedStudents) {
+                    const cell = document.createElement("td");
+                    cell.textContent = rowMap.get(student.uid) || "pending";
+                    row.appendChild(cell);
+                }
+                body.appendChild(row);
+            }
+            table.appendChild(body);
+            container.appendChild(table);
+        }
+
+        async function buildTaskCard(task) {
+            const card = document.createElement("article");
+            card.className = "task-card";
+
+            const [progress, submission] = await Promise.all([
+                getTaskProgress(groupId, task.id, currentUser.uid),
+                getSubmission(groupId, task.id, currentUser.uid)
+            ]);
+            const progressStatus = progress?.status || "pending";
+
+            const title = document.createElement("h3");
+            title.textContent = task.title || "Untitled";
+
+            const desc = document.createElement("p");
+            desc.textContent = task.description || "No instructions.";
+
+            const due = document.createElement("p");
+            due.textContent = `Deadline: ${formatDateTime(task.dueDate)}`;
+
+            const chip = document.createElement("span");
+            chip.className = "chip";
+            chip.textContent = `Progress: ${progressStatus}`;
+
+            const actions = document.createElement("div");
+            actions.className = "row-actions";
+
+            const progressSelect = document.createElement("select");
+            for (const status of ["pending", "in_progress", "completed"]) {
+                const option = document.createElement("option");
+                option.value = status;
+                option.textContent = status.replace("_", " ");
+                option.selected = progressStatus === status;
+                progressSelect.appendChild(option);
+            }
+
+            const saveProgressBtn = document.createElement("button");
+            saveProgressBtn.type = "button";
+            saveProgressBtn.className = "secondary";
+            saveProgressBtn.textContent = "Save progress";
+            saveProgressBtn.addEventListener("click", async () => {
+                try {
+                    await setTaskProgress(
+                        groupId, task.id, currentUser.uid, progressSelect.value
+                    );
+                    showToast("Progress updated.", "success");
+                    await refreshTasks();
+                } catch (error) {
+                    console.error(error);
+                    showToast("Could not update progress.", "error");
+                }
             });
+
+            actions.append(progressSelect, saveProgressBtn);
+
+            // Header first, so the title is not pushed below the submission box.
+            card.append(title, desc, due, chip, actions);
+
+            if (currentRole === "student") {
+                const submitArea = document.createElement("textarea");
+                submitArea.placeholder = "Write your submission here...";
+                submitArea.value = submission?.content || "";
+
+                const submitBtn = document.createElement("button");
+                submitBtn.type = "button";
+                submitBtn.className = "secondary";
+                submitBtn.textContent = "Submit work";
+                submitBtn.addEventListener("click", async () => {
+                    try {
+                        await submitWork(
+                            groupId, task.id, currentUser.uid, submitArea.value
+                        );
+                        showToast("Submission saved.", "success");
+                        await refreshTasks();
+                    } catch (error) {
+                        console.error(error);
+                        showToast("Submission failed.", "error");
+                    }
+                });
+
+                card.append(submitArea, submitBtn);
+
+                if (submission?.feedback) {
+                    const feedback = document.createElement("div");
+                    feedback.className = "review-box";
+                    feedback.textContent =
+                        `Review (${submission.reviewStatus || "pending"}): ${submission.feedback}`;
+                    card.appendChild(feedback);
+                }
+            }
+
+            if (isStaff()) {
+                const submissions = await Promise.all(
+                    cachedStudents.map(student =>
+                        getSubmission(groupId, task.id, student.uid))
+                );
+
+                for (const [index, student] of cachedStudents.entries()) {
+                    const sub = submissions[index];
+                    if (!sub?.content) continue;
+
+                    const block = document.createElement("div");
+                    block.className = "review-box";
+
+                    // textContent, never innerHTML: submissions are written by students.
+                    const who = document.createElement("strong");
+                    who.textContent = memberName(student.uid);
+                    const text = document.createElement("div");
+                    text.style.whiteSpace = "pre-wrap";
+                    text.textContent = sub.content;
+                    block.append(who, text);
+
+                    const reviewSelect = document.createElement("select");
+                    reviewSelect.innerHTML =
+                        '<option value="accepted">accepted</option><option value="needs_revision">needs revision</option>';
+
+                    const feedbackInput = document.createElement("input");
+                    feedbackInput.placeholder = "Feedback for student";
+                    feedbackInput.value = sub.feedback || "";
+
+                    const reviewBtn = document.createElement("button");
+                    reviewBtn.type = "button";
+                    reviewBtn.className = "secondary";
+                    reviewBtn.textContent = "Save review";
+                    reviewBtn.addEventListener("click", async () => {
+                        try {
+                            await reviewSubmission(
+                                groupId,
+                                task.id,
+                                student.uid,
+                                currentUser.uid,
+                                reviewSelect.value,
+                                feedbackInput.value
+                            );
+                            showToast("Review saved.", "success");
+                        } catch (error) {
+                            console.error(error);
+                            showToast("Review failed.", "error");
+                        }
+                    });
+
+                    block.append(reviewSelect, feedbackInput, reviewBtn);
+                    card.appendChild(block);
+                }
+            }
+
+            return card;
+        }
+
+        async function refreshTasks() {
+            const list = $("taskList");
+            list.replaceChildren();
+
+            if (!cachedTasks.length) {
+                list.innerHTML = '<div class="message">No assignments yet.</div>';
+                return;
+            }
+
+            const cards = await Promise.all(cachedTasks.map(buildTaskCard));
+            list.append(...cards);
+
+            if (isStaff()) await renderStaffTable();
         }
 
         async function loadTasks() {
-            showTaskMessage("Loading assignments...");
-
-            try {
-                const tasksQuery = query(
-                    collection(db, "groups", groupId, "tasks"),
-                    orderBy("createdAt", "desc"),
-                    limit(50)
-                );
-
-                const snapshot = await getDocs(tasksQuery);
-
-                cachedTasks = snapshot.docs.map(item => ({
-                    id: item.id,
-                    ...item.data()
-                }));
-
-                await renderTasks(cachedTasks);
-
-                if (isAdmin()) {
-                    await refreshMemberProgress();
-                }
-            } catch (error) {
-                console.error("Assignment loading error:", error);
-                showTaskMessage(
-                    "Unable to load assignments. Check Firestore rules and indexes."
-                );
-            }
+            const tasksQuery = query(
+                collection(db, "groups", groupId, "tasks"),
+                orderBy("createdAt", "desc"),
+                limit(50)
+            );
+            const snapshot = await getDocs(tasksQuery);
+            cachedTasks = snapshot.docs.map(item => ({
+                id: item.id,
+                ...item.data()
+            }));
+            await refreshTasks();
         }
 
-        async function loadGroup(user) {
-            if (!groupId) {
-                groupName.textContent = "Group not selected";
-                groupDescription.textContent =
-                    "Open a group from Home or Groups.";
-                createTaskPanel.hidden = true;
-                memberProgressPanel.hidden = true;
-                showTaskMessage("A group ID is required.");
-                return;
-            }
-
-            try {
-                const groupSnapshot = await getDoc(doc(db, "groups", groupId));
-
-                if (!groupSnapshot.exists()) {
-                    groupName.textContent = "Group not found";
-                    groupDescription.textContent =
-                        "This group may have been deleted or the link is invalid.";
-                    createTaskPanel.hidden = true;
-                    memberProgressPanel.hidden = true;
-                    showTaskMessage("Group unavailable.");
-                    return;
-                }
-
-                const data = groupSnapshot.data();
-                const memberSnapshot = await getDoc(
-                    doc(db, "groups", groupId, "members", user.uid)
-                );
-
-                if (!memberSnapshot.exists()) {
-                    groupName.textContent = "Access denied";
-                    groupDescription.textContent =
-                        "You are not a member of this group.";
-                    createTaskPanel.hidden = true;
-                    memberProgressPanel.hidden = true;
-                    showTaskMessage("You do not have access to this group.");
-                    return;
-                }
-
-                currentRole = memberSnapshot.data().role;
-                const roleLabel = normalizeRole(currentRole) === "admin"
-                    ? "Admin"
-                    : "Member";
-
-                groupName.textContent = data.name || "Untitled group";
-                groupDescription.textContent =
-                    data.description || "No description added.";
-                groupIdLabel.textContent = `Group ID: ${groupId}`;
-                roleMessage.textContent = `Your role: ${roleLabel}`;
-
-                createTaskPanel.hidden = !isAdmin();
-                memberProgressPanel.hidden = !isAdmin();
-
-                await loadMembers();
-                await loadTasks();
-            } catch (error) {
-                console.error("Group loading error:", error);
-
-                groupName.textContent = "Could not load group";
-                groupDescription.textContent =
-                    "Check your Firestore security rules.";
-                createTaskPanel.hidden = true;
-                memberProgressPanel.hidden = true;
-                showTaskMessage("Unable to load group details.");
-            }
-        }
-
-        taskForm.addEventListener("submit", async event => {
+        $("taskForm").addEventListener("submit", async event => {
             event.preventDefault();
-
-            if (!currentUser || !isAdmin()) {
-                showNotice("Only group admins can create assignments.", "error");
+            if (!isStaff()) {
+                showToast("Only teachers/admins can create assignments.", "error");
                 return;
             }
 
-            const title = taskTitle.value.trim();
-            const description = taskDescription.value.trim();
-            const deadlineValue = taskDueDate.value;
-
-            if (!title) {
-                showNotice("Enter an assignment title.", "error");
-                return;
-            }
+            const title = $("taskTitle").value.trim();
+            if (!title) return;
 
             let dueDate = null;
-
-            if (deadlineValue) {
-                const parsedDate = new Date(deadlineValue);
-
-                if (Number.isNaN(parsedDate.getTime())) {
-                    showNotice("Enter a valid deadline.", "error");
-                    return;
-                }
-
-                dueDate = Timestamp.fromDate(parsedDate);
+            if ($("taskDueDate").value) {
+                dueDate = Timestamp.fromDate(new Date($("taskDueDate").value));
             }
 
-            createTaskButton.disabled = true;
-            createTaskButton.textContent = "Creating...";
-            showNotice("");
-
+            $("createTaskButton").disabled = true;
             try {
-                const taskRef = doc(
-                    collection(db, "groups", groupId, "tasks")
-                );
+                const taskRef = doc(collection(db, "groups", groupId, "tasks"));
+                await writeBatch(db).set(taskRef, {
+                    title,
+                    description: $("taskDescription").value.trim(),
+                    createdBy: currentUser.uid,
+                    createdAt: serverTimestamp(),
+                    dueDate,
+                    status: "assigned"
+                }).commit();
 
-                await writeBatch(db)
-                    .set(taskRef, {
-                        title,
-                        description,
-                        createdBy: currentUser.uid,
-                        createdAt: serverTimestamp(),
-                        dueDate
-                    })
-                    .commit();
-
-                taskForm.reset();
-                showNotice("Assignment created successfully!", "success");
+                $("taskForm").reset();
+                showToast("Assignment created.", "success");
                 await loadTasks();
             } catch (error) {
-                console.error("Assignment creation error:", error);
-
-                showNotice(
-                    error.code === "permission-denied"
-                        ? "Permission denied. Check your group task rules."
-                        : "Could not create the assignment. Please try again.",
-                    "error"
-                );
+                console.error(error);
+                showToast("Could not create assignment.", "error");
             } finally {
-                createTaskButton.disabled = false;
-                createTaskButton.textContent = "Create assignment";
+                $("createTaskButton").disabled = false;
             }
         });
 
@@ -798,7 +594,35 @@
             }
 
             currentUser = user;
-            await loadGroup(user);
+
+            if (!groupId) {
+                $("groupName").textContent = "Missing group ID";
+                return;
+            }
+
+            try {
+                const groupSnap = await getDoc(doc(db, "groups", groupId));
+                if (!groupSnap.exists()) {
+                    $("groupName").textContent = "Group not found";
+                    return;
+                }
+
+                const membership = await getGroupMembership(groupId, user.uid);
+                if (!membership) {
+                    $("groupName").textContent = "Access denied";
+                    $("groupDescription").textContent = "You are not a member.";
+                    return;
+                }
+
+                currentRole = membership.role;
+                backfillOwnName(membership);
+                await loadGroupMeta(groupSnap);
+                await loadMembers();
+                await loadTasks();
+            } catch (error) {
+                console.error("Group page error:", error);
+                showToast("Failed to load group.", "error");
+            }
         });
     </script>
 </body>

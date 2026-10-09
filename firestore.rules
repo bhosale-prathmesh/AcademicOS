@@ -24,6 +24,12 @@ service cloud.firestore {
         && groupMemberRole(groupId) in ['admin', 'teacher'];
     }
 
+    function isGroupAdmin(groupId) {
+      return isGroupMember(groupId)
+        && groupMemberRole(groupId) == 'admin';
+    }
+
+    // ---------------- Users (private to each user) ----------------
     match /users/{userId} {
       allow read: if isSelf(userId);
       allow create: if isSelf(userId);
@@ -40,49 +46,85 @@ service cloud.firestore {
       }
     }
 
+    // ---------------- Groups ----------------
     match /groups/{groupId} {
+      // Any signed-in user can open a group by ID (needed to join).
       allow get: if signedIn();
       allow list: if signedIn() && resource.data.createdBy == request.auth.uid;
+
       allow create: if signedIn()
         && request.resource.data.createdBy == request.auth.uid;
-      allow update: if isGroupStaff(groupId);
+
+      // Staff can edit the group, but cannot change who created it.
+      allow update: if isGroupStaff(groupId)
+        && request.resource.data.createdBy == resource.data.createdBy;
 
       match /members/{memberId} {
-        allow read: if isGroupMember(groupId);
+        // A user must be able to read their OWN member document before
+        // joining, otherwise joining fails with permission-denied.
+        allow get: if isSelf(memberId) || isGroupMember(groupId);
+        allow list: if isGroupMember(groupId);
+
         allow create: if signedIn() && (
+          // Self-join as student, or creator becoming admin of the new group.
+          // getAfter() is needed because the group is created in the same batch.
           (memberId == request.auth.uid
             && request.resource.data.uid == request.auth.uid
             && (
               request.resource.data.role == 'student'
               || (
                 request.resource.data.role == 'admin'
-                && get(/databases/$(database)/documents/groups/$(groupId)).data.createdBy == request.auth.uid
+                && getAfter(/databases/$(database)/documents/groups/$(groupId)).data.createdBy == request.auth.uid
               )
             ))
-          || isGroupStaff(groupId)
+          // Staff adding someone else (never as admin).
+          || (isGroupStaff(groupId)
+            && request.resource.data.role in ['student', 'teacher'])
         );
-        allow update: if isGroupStaff(groupId);
+
+        allow update: if
+          // Only a group admin can change roles; teachers can edit other fields.
+          (isGroupStaff(groupId)
+            && (isGroupAdmin(groupId)
+              || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role'])))
+          // Members can add/update their own display name only.
+          || (isSelf(memberId)
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['displayName']));
       }
 
+      // ---------------- Assignments ----------------
       match /tasks/{taskId} {
         allow read: if isGroupMember(groupId);
         allow create, update, delete: if isGroupStaff(groupId);
 
         match /progress/{studentId} {
           allow read: if isGroupMember(groupId);
-          allow write: if isSelf(studentId) && isGroupMember(groupId);
+          allow write: if isSelf(studentId)
+            && isGroupMember(groupId)
+            && request.resource.data.status in ['pending', 'in_progress', 'completed'];
         }
 
         match /submissions/{studentId} {
-          allow read: if isGroupMember(groupId);
+          // Students see only their own work; staff see everyone's.
+          allow read: if isSelf(studentId) || isGroupStaff(groupId);
 
+          // Student submits / resubmits their own work. They cannot fake a review.
           allow create, update: if isSelf(studentId)
             && isGroupMember(groupId)
             && groupMemberRole(groupId) == 'student'
-            && (!request.resource.data.keys().hasAny(['reviewStatus'])
-              || request.resource.data.reviewStatus == 'pending');
+            && request.resource.data.reviewStatus == 'pending'
+            && request.resource.data.get('feedback', '') == ''
+            && request.resource.data.get('reviewedBy', null) == null
+            && request.resource.data.content is string
+            && request.resource.data.content.size() <= 20000;
 
-          allow update: if isGroupStaff(groupId);
+          // Staff can only change the review fields, as themselves.
+          allow update: if isGroupStaff(groupId)
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['reviewStatus', 'feedback', 'reviewedBy', 'reviewedAt'])
+            && request.resource.data.reviewStatus in ['accepted', 'needs_revision']
+            && request.resource.data.reviewedBy == request.auth.uid;
         }
       }
     }

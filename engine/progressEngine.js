@@ -90,14 +90,18 @@ export async function reviewSubmission(
 export async function loadMemberProgressMatrix(groupId, taskIds, memberUids) {
   const matrix = new Map();
 
-  for (const taskId of taskIds) {
-    const row = new Map();
-    for (const uid of memberUids) {
-      const progress = await getTaskProgress(groupId, taskId, uid);
-      row.set(uid, progress?.status || "pending");
-    }
-    matrix.set(taskId, row);
-  }
+  await Promise.all(
+    taskIds.map(async taskId => {
+      const statuses = await Promise.all(
+        memberUids.map(uid => getTaskProgress(groupId, taskId, uid))
+      );
+      const row = new Map();
+      memberUids.forEach((uid, index) => {
+        row.set(uid, statuses[index]?.status || "pending");
+      });
+      matrix.set(taskId, row);
+    })
+  );
 
   return matrix;
 }

@@ -10,6 +10,12 @@ import {
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
 
+function displayNameOf(user) {
+  return (user.displayName || (user.email || "").split("@")[0] || "")
+    .trim()
+    .slice(0, 60);
+}
+
 export async function createGroup(user, name, description = "") {
   const groupRef = doc(collection(db, "groups"));
   const memberRef = doc(db, "groups", groupRef.id, "members", user.uid);
@@ -28,6 +34,7 @@ export async function createGroup(user, name, description = "") {
 
   batch.set(memberRef, {
     uid: user.uid,
+    displayName: displayNameOf(user),
     role: "admin",
     joinedAt: serverTimestamp()
   });
@@ -61,6 +68,7 @@ export async function joinGroup(user, groupId) {
 
   batch.set(memberRef, {
     uid: user.uid,
+    displayName: displayNameOf(user),
     role: "student",
     joinedAt: serverTimestamp()
   });
