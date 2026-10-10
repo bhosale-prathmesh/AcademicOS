@@ -6,14 +6,14 @@ import { getDatabase } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-
 import { getAnalytics, isSupported } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-analytics.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDQCX2gFMvLdBDd46_AFDaprTGfWT5Wg1E",
-  authDomain: "academicos-ff1ad.firebaseapp.com",
-  databaseURL: "https://academicos-ff1ad-default-rtdb.firebaseio.com",
-  projectId: "academicos-ff1ad",
-  storageBucket: "academicos-ff1ad.firebasestorage.app",
-  messagingSenderId: "746148310439",
-  appId: "1:746148310439:web:6529a16a7b4c23b8de9a82",
-  measurementId: "G-TYCSJ6HGFZ"
+  apiKey: "*******************************************",
+  authDomain: "**************************************",
+  databaseURL: "*************************************",
+  projectId: "************",
+  storageBucket: "**************",
+  messagingSenderId: "*********",
+  appId: "********************",
+  measurementId: "**************"
 };
 
 const app = initializeApp(firebaseConfig);
